@@ -215,6 +215,8 @@ generated quantities {
   array[M, n_occasions] int<lower=0, upper=1> z; // Deflated latent state
   
   // Generate w[] and z[]
+  // This code generates the posterior predictive distribution
+  // unconditioned on the observation
   for (i in 1 : M) {
     int q = 1;
     if (bernoulli_rng(psi)) {

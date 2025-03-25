@@ -121,6 +121,8 @@ generated quantities {
   array[M, n_occasions] int<lower=1, upper=3> z; // Latent state
   
   // Generate z[]
+  // This code generates the posterior predictive distribution
+  // unconditioned on the observation
   for (i in 1 : M) {
     z[i, 1] = 1;
     for (t in 2 : n_occasions) {
