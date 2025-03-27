@@ -227,7 +227,6 @@ generated quantities {
   
   // Generate w[] and z[]
   // This code generates the posterior predictive distribution
-  // unconditioned on the observation
   for (i in 1 : M) {
     int q = 1;
     if (bernoulli_rng(psi)) {
