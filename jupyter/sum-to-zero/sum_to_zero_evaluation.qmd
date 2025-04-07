@@ -17,13 +17,18 @@ format:
     code-summary: "Show Code"
     toc: true
     css: quarto-config/quarto_styles.css
-    grid:
-      sidebar-width: 250px
-      body-width: 900px
-      margin-width: 300px
+    page-layout: full
+    toc-location: right
     embed-resources: true
 execute:
   engine: jupyter
+include-in-header:
+  - text: |
+      <style>
+        .table {
+          width: auto;
+        }
+      </style>
 ---
 
 
@@ -38,10 +43,11 @@ import libpysal
 from splot.libpysal import plot_spatial_weights 
 from random import randint
 
-from cmdstanpy import CmdStanModel
+from cmdstanpy import CmdStanModel, cmdstan_path, set_cmdstan_path
 import logging
 cmdstanpy_logger = logging.getLogger("cmdstanpy")
-cmdstanpy_logger.setLevel(logging.ERROR)
+cmdstanpy_logger.setLevel(logging.FATAL)
+set_cmdstan_path(os.path.join('/Users', 'mitzi', 'github', 'stan-dev', 'cmdstan'))
 
 import warnings
 warnings.filterwarnings('ignore')
@@ -49,6 +55,8 @@ warnings.filterwarnings('ignore')
 import matplotlib
 import matplotlib.pyplot as plt
 %matplotlib inline
+
+from utils_html import *
 
 # notebook display options
 plt.rcParams['figure.figsize'] = (7, 7)
@@ -58,61 +66,7 @@ np.set_printoptions(precision=2)
 np.set_printoptions(suppress=True)
 pd.set_option('display.precision', 2)
 pd.options.display.float_format = '{:.2f}'.format
-
-
-# helper functions
-
-def extract_numeric_index(idx: pd.Index) -> pd.Series:
-    return idx.str.extract(r'[a-z_]*\[(\d+)\]', expand=False).astype(int)
-
-# add dividers every nth row
-from pandas.io.formats.style import Styler
-def style_dataframe(df: pd.DataFrame, modulus: int) -> Styler:
-    def highlight_every_nth_row(row: pd.Series, row_index: int, modulus: int) -> list[str]:
-        if (row_index + 1) % modulus == 0:  # add border
-            return ['border-bottom: 3px double black'] * len(row)
-        return [''] * len(row)
-    return (df.style
-              .apply(lambda row: highlight_every_nth_row(row, df.index.get_loc(row.name), modulus), axis=1)
-              .format(precision=2)
-           )
-
-
-# Filter and sort predictors
-def summarize_predictor(df: pd.DataFrame, name: str) -> pd.DataFrame:
-    pred_summary = df.filter(regex=name, axis=0).sort_index()
-    if "[" in name:
-        pred_summary = pred_summary.sort_index(key=extract_numeric_index)
-    
-    return pred_summary[['Mean', 'StdDev', 'ESS_bulk', 'ESS/sec', 'R_hat']]
-
-
-# side-by-side tables
-from IPython.core.display import display, HTML
-def display_side_by_side(
-    html_left: str,
-    html_right: str,
-    title_left: str = "Small Dataset",
-    title_right: str = "Large Dataset"
-) -> None:
-    """
-    Displays two HTML tables side by side in a Jupyter Notebook.
-    """
-    html_code = f"""
-    <div style="display: flex; justify-content: space-between; gap: 10px;">
-        <div style="width: 48%; border: 1px solid #ddd; padding: 5px;">
-            <b><i>{title_left}</i></b>
-            {html_left}
-        </div>
-        <div style="width: 48%; border: 1px solid #ddd; padding: 5px;">
-            <b><i>{title_right}</i></b>
-            {html_right}
-        </div>
-    </div>
-    """
-    display(HTML(html_code))
 ```
-
 
 ## Introducing the `sum_to_zero_vector` Constrained Parameter Type
 
@@ -140,10 +94,10 @@ parameters {
   sum_to_zero_vector[N] z;
 }
 model {
-  z ~ normal(0, sqrt(N * inv(N - 1)) * sigma)
+  z ~ normal(0, sqrt((N / (N - 1.0)) * sigma)
 }
 ```
->where sigma is the intended standard deviation. FYI, it’s a bit more efficient to pre-calculate the `sqrt(N * inv(N - 1))` in transformed_data.
+>where sigma is the intended standard deviation. FYI, it’s a bit more efficient to pre-calculate the `sqrt(N * (N - 1.0))` in transformed_data.
 The general result to get a given variance from a normal with linear constraints is in: Fraser, D. A. S. (1951).
 Normal Samples With Linear Constraints and Given Variances. Canadian Journal of Mathematics, 3, 363–366. [doi:10.4153/CJM-1951-041-9](https://doi.org/10.4153/CJM-1951-041-9).
 
@@ -199,10 +153,6 @@ To demonstrate this, in this notebook we consider two different classes of model
 - Multi-level regressions for binomial data with group-level categorical predictors.
 - Spatial models for areal data.
 
-::: {.callout-note}
-The spatial models are taken from the a set of notebooks available from GitHub repo [https://github.com/mitzimorris/geomed_2024](https://github.com/mitzimorris/geomed_2024).
-:::
-
 For these models, we provide three implementations which differ only in the
 implementation of the sum-to-zero constraint:  the built-in `sum_to_zero_vector`,
 and the hard and soft sum-to-zero implementations.
@@ -212,11 +162,9 @@ Since the models are equivalent, we expect that all three implementations
 should produce the same estimates; what differs is the speed of computation,
 as measured by effective samples per second.
 
-Included in the GitHub repository for this notebook are a series of helper functions.
-
-* [utils_dataviz.py](https://github.com/stan-dev/example-models/tree/master/jupyter/sum-to-zero/stan/utils_dataviz.py) - summarize and plot the posterior sample.
-* [utils_bym2.py](https://github.com/stan-dev/example-models/tree/master/jupyter/sum-to-zero/stan/utils_bym2.py) - compute data inputs to the BYM2 model.
-* [utils_nyc_map.py](https://github.com/stan-dev/example-models/tree/master/jupyter/sum-to-zero/stan/utils_nyc_map.py) - munge the New York City census tract map.
+::: {.callout-note}
+The spatial models are taken from the a set of notebooks available from GitHub repo [https://github.com/mitzimorris/geomed_2024](https://github.com/mitzimorris/geomed_2024).
+:::
 
 ## Multi-level Models with Group-level Categorical Predictors
 
@@ -282,9 +230,9 @@ and applied as part of the prior.
 ```stan
 transformed data {
   // scaling factors for marginal variances of sum_to_zero_vectors
-  real s_age = sqrt(N_age * inv(N_age - 1));
-  real s_eth = sqrt(N_eth * inv(N_eth - 1));
-  real s_edu = sqrt(N_edu * inv(N_edu - 1));
+  real s_age = sqrt(N_age / (N_age - 1.0));
+  real s_eth = sqrt(N_eth / (N_eth - 1.0));
+  real s_edu = sqrt(N_edu / (N_edu - 1.0));
 }
   ...
 model {
@@ -297,635 +245,372 @@ model {
 }
 ```
 
-
-### The data-generating program
+#### Simulating Data
 
 To investigate the predictive behavior of this model at different timepoints in a pandemic,
 we have written a data-generating program to create datasets given the
 baseline disease prevalence, test specificity and sensitivity,
-the specified total number of diagnostic tests.
-
+and the desired number of diagnostic tests.
 In the `generated quantities` block we use Stan's PRNG functions to populate
 the true weights for the categorical coefficient vectors, and the relative percentages
 of per-category observations.
 Then we use a set of nested loops to generate the data for each demographic,
 using the PRNG equivalent of the model likelihood.
 
-* Because the modeled data `pos_tests` is generated according to the Stan model's likelihood,
-the model is a priori well-specified with respect to the data.
-
-* Because the true parameters are defined in the `generated quantities` block,
-each sample provides a datasets from a different set of regression covariates
-and with different amounts of per-demographic data.
-
 The full data-generating program is in file [gen_binomial_4_preds.stan](https://github.com/stan-dev/example-models/tree/master/jupyter/sum-to-zero/stan/binomial_4_preds_ozs.stan).
-Here we show the nested loop which generates the modeled and unmodeled data inputs.
-
-```stan
-transformed data {
-  int strata = 2 * N_age * N_eth * N_edu;
-}
-generated quantities {
-  ...
-  // generate true parameters via PRNG functions
-  ...
-  array[strata] int sex, age, eth, edu, pos_tests, tests;
-  array[strata] real p;
-  array[strata] real p_sample;
-
-  int idx = 1;
-  for (i_sex in 1:2) {
-    for (i_age in 1:N_age) {
-      for (i_eth in 1:N_eth) {
-        for (i_edu in 1:N_edu) {
-
-	  // corresponds to unmodeled data inputs
-          sex[idx] = i_sex; age[idx] = i_age; eth[idx] = i_eth; edu[idx] = i_edu;
-          tests[idx] = to_int(pct_sex[i_sex] * pct_age[i_age]
-	                      * pct_eth[i_eth] * pct_edu[i_edu] * N);
-
-	  // corresponds to transformed parameters
-          p[idx] = inv_logit(beta_0 + beta_sex * (i_sex)
-                    + beta_age[i_age] + beta_eth[i_eth] +  beta_edu[i_edu]);
-          p_sample[idx] = p[idx] * sens + (1 - p[idx]) * (1 - spec);
-
-	  // corresponds to likelihood
-          pos_tests[idx] = binomial_rng(tests[idx], p_sample[idx]);
-          idx += 1;
-        }}}}
-```
-
-::: {.callout-note}
-The above set of nested for loops used here to generate the data
-is that same as would be used do to post-stratification the fitted model predictors.
-See section [Coding MRP in Stan](https://mc-stan.org/docs/stan-users-guide/poststratification.html#coding-mrp-in-stan)
-in the Stan User's Guide.
-:::
-
-### Creating Simulated Datasets
-
-The data generating program allows us to create datasets for large and small populations
+The helper function `simulate_data` in file `utils.py` sets up the data-generating program
+according to the specified number of demographic categories, approximate average number of
+observations per category, and baseline disease prevalence, test specificity and sensitivity.
+This allows us to create datasets for large and small populations
 and for finer or more coarse-grained sets of categories.
 The larger the number of strata overall, the more observations are needed to get good coverage.
+Because the modeled data `pos_tests` is generated according to the Stan model's likelihood,
+the model is a priori well-specified with respect to the data.
 
 
-##### Instantiate the data generating model.
-
-```{python}
-datagen_model_file = os.path.join('stan', 'gen_binomial_4_preds.stan')
-gen_mod = CmdStanModel(stan_file=datagen_model_file)
-```
-
-##### Specify the number of categories for age, eth, and edu.
-
-```{python}
-gen_data_dict = {
-    'N_eth':3, 'N_edu':5, 'N_age':9, 
-    'baseline': -3.5, 'sens': 0.75, 'spec': 0.9995}
-
-strata = 2 * gen_data_dict['N_age'] * gen_data_dict['N_eth'] * gen_data_dict['N_edu']
-```
-
-###### Specify the total number of observations.
-
-We generate two datasets:  one with a small number of observations, relative to the number of strata,
-and one with sufficient data to provide information on all combinations of demographics.
-
-```{python}
-gen_data = gen_data_dict.copy()
-gen_data['N'] = strata * 17
-
-gen_data_lg = gen_data_dict.copy()
-gen_data_lg['N'] = strata * 200
-
-gen_data_tiny = gen_data_dict.copy()
-gen_data_tiny['N'] = strata * 7
-```
-
-##### Run 1 sampling iteration to get a complete dataset.
-
-```{python}
-sim_data = gen_mod.sample(data=gen_data,
-                          iter_warmup=1, iter_sampling=1, chains=1, seed=45678)
-
-sim_data_lg = gen_mod.sample(data=gen_data_lg,
-                          iter_warmup=1, iter_sampling=1, chains=1, seed=45678)
-
-sim_data_tiny = gen_mod.sample(data=gen_data_tiny,
-                          iter_warmup=1, iter_sampling=1, chains=1, seed=45678)
-```
-
-##### Examine the set of generated data-generating params and resulting dataset.
-
-```{python}
-print(f'Small dataset: N = {gen_data["N"]}, strata = {strata}, expected obs per demographic {gen_data["N"] / strata}')
-print(f'Large dataset: N = {gen_data_lg["N"]}, strata = {strata}, expected obs per demographic {gen_data_lg["N"] / strata}')
-for var, value in sim_data.stan_variables().items():
-    print(var, value[0]) if isinstance(value[0], np.float64) else print(var, value[0][:10])
-```
-
-What is the distribution of the observed number of tests per demographic?
-
-```{python}
-tests = pd.Series(sim_data.stan_variable('tests')[0])
-print("Small dataset, tests per demographic", tests.describe())
-```
-
-```{python}
-tests_lg = pd.Series(sim_data_lg.stan_variable('tests')[0])
-print("Large dataset, tests per demographic", tests_lg.describe())
-```
-
-```{python}
-tests_tiny = pd.Series(sim_data_tiny.stan_variable('tests')[0])
-print("Tiny dataset, tests per demographic", tests_tiny.describe())
-```
-
-##### Plot the distribution of observed positive tests and the underlying prevalence.
-
+::: {.callout-note}
 Because the data-generating parameters and percentage of observations per category are generated at random,
 some datasets may have very low overall disease rates and/or many unobserved strata, and will therefore be
-pathologically hard to fit.  This is informative for understanding what is consistent when
-generating a set of percentages and regression weights as is done in the Stan data generating program.
+pathologically hard to fit.  Using a specified seed for the data-generating program avoids this problem.
+:::
 
-```stan
-  vector[N_eth] pct_eth = dirichlet_rng(rep_vector(1, N_eth));
-  for (n in 1:N_eth) {
-    beta_eth[n] = std_normal_rng();
-  }
-```
 
-However, this can result in very unbalanced datasets, in which case it is best to
-generate another dataset and continue.
 
 ```{python}
-sim_df = pd.DataFrame({'tests':sim_data.tests[0], 'pos_tests':sim_data.pos_tests[0], 'p_sample':sim_data.p_sample[0]})
-sim_df['raw_prev'] = sim_df['pos_tests'] / sim_df['tests']
-(
-    p9.ggplot(sim_df)
-    + p9.geom_density(p9.aes(x='raw_prev'), color='darkblue', fill='blue', alpha=0.3)
-    + p9.geom_density(p9.aes(x='p_sample'), color='darkorange', fill='pink', alpha=0.3)
-    + p9.labs(
-        x='raw prevalence',
-        y='',
-        title='Observed (blue) and underlying true prevalence (pink)\nsmall dataset'
-    )
-    + p9.theme_minimal()
-)
+#| output: false
+
+# specify data shapes and test characteristics
+N_eth = 3
+N_edu = 5
+N_age = 9
+baseline = -3.5
+sens = 0.75
+spec = 0.9995
+
+
+# generate datasets
+from utils import simulate_data
+data_tiny = simulate_data(N_eth, N_edu, N_age, baseline, sens, spec, 4, seed=56789)
+data_small = simulate_data(N_eth, N_edu, N_age, baseline, sens, spec, 17, seed=data_tiny['seed'])
+data_large = simulate_data(N_eth, N_edu, N_age, baseline, sens, spec, 200, seed=data_tiny['seed'])
 ```
+The data generating program creates unequal numbers of tests per demographic.
+The following tables summarize the resulting distribution.
+
+:::: columns
+
+::: {.column width="32%"}
 
 ```{python}
-sim_df = pd.DataFrame({'tests':sim_data_lg.tests[0], 'pos_tests':sim_data_lg.pos_tests[0], 'p_sample':sim_data_lg.p_sample[0]})
-sim_df['raw_prev'] = sim_df['pos_tests'] / sim_df['tests']
-(
-    p9.ggplot(sim_df)
-    + p9.geom_density(p9.aes(x='raw_prev'), color='darkblue', fill='blue', alpha=0.3)
-    + p9.geom_density(p9.aes(x='p_sample'), color='darkorange', fill='pink', alpha=0.3)
-    + p9.labs(
-        x='raw prevalence',
-        y='',
-        title='Observed (blue) and underlying true prevalence (pink)\nlarge dataset'
-    )
-    + p9.theme_minimal()
-)
+print("Small Dataset")
+print("tests total " + str(np.sum(data_small['tests'])))
+
+small_df = pd.DataFrame({'tests per demographic': data_small['tests']}).describe()
+small_df.drop('count', inplace=True)
+small_df
 ```
+:::
+
+::: {.column width="32%"}
+```{python}
+print("Large Dataset")
+print("tests total " + str(np.sum(data_large['tests'])))
+
+large_df = pd.DataFrame({'tests per demographic': data_large['tests']}).describe()
+large_df.drop('count', inplace=True)
+large_df
+```
+:::
+
+::: {.column width="32%"}
+```{python}
+print("Tiny Dataset")
+print("tests total " + str(np.sum(data_tiny['tests'])))
+
+tiny_df = pd.DataFrame({'tests per demographic': data_tiny['tests']}).describe()
+tiny_df.drop('count', inplace=True)
+tiny_df
+```
+:::
+
+::::
+
+
 
 ### Model Fitting
 
-Assemble the data dictionary of all input data for the model which solves the inverse problem -
-i.e., estimates regression coefficients given the observed data.
-We use the generated data as the inputs.
-Because the output files are real-valued outputs, regardless of variable element type,
-model data variables of type int need to be cast to int.
-Here all the observed data is count and categorial data.
+We fit each model to the the large and small datasets.
+We record the seed used for the first run and use it for all subsequent fits; this insures that the models have the same set of initial parameter values
+for all parameters except the constrained params `beta_eth`, `beta_edu`, and `beta_age`.
 
-```{python}
-data_fixed = {'N':sim_data.pos_tests.shape[1], 
-              'N_age':gen_data_dict['N_age'], 
-              'N_eth':gen_data_dict['N_eth'],
-              'N_edu':gen_data_dict['N_edu'],
-              'sens': gen_data_dict['sens'],
-              'spec': gen_data_dict['spec'],
-              'intercept_prior_mean': gen_data_dict['baseline'],
-              'intercept_prior_scale': 2.5}
 
-data_small = data_fixed | {'pos_tests':sim_data.pos_tests[0].astype(int),
-             'tests':sim_data.tests[0].astype(int),
-             'sex':sim_data.sex[0].astype(int),
-             'age':sim_data.age[0].astype(int), 
-             'eth':sim_data.eth[0].astype(int),
-             'edu':sim_data.edu[0].astype(int)}
-
-data_large = data_fixed | {'pos_tests':sim_data_lg.pos_tests[0].astype(int),
-             'tests':sim_data_lg.tests[0].astype(int),
-             'sex':sim_data_lg.sex[0].astype(int),
-             'age':sim_data_lg.age[0].astype(int), 
-             'eth':sim_data_lg.eth[0].astype(int),
-             'edu':sim_data_lg.edu[0].astype(int)}
-
-data_tiny = data_fixed | {'pos_tests':sim_data_tiny.pos_tests[0].astype(int),
-             'tests':sim_data_tiny.tests[0].astype(int),
-             'sex':sim_data_tiny.sex[0].astype(int),
-             'age':sim_data_tiny.age[0].astype(int), 
-             'eth':sim_data_tiny.eth[0].astype(int),
-             'edu':sim_data_tiny.edu[0].astype(int)}
-```
-
-Record the data-generating parameters
-
-```{python}
-true_params = {
-    'beta_0': sim_data.beta_0[0],
-    'pct_sex': sim_data.pct_sex[0],
-    'beta_sex': sim_data.beta_sex[0],
-    'pct_age': sim_data.pct_age[0],
-    'beta_age':sim_data.beta_age[0],
-    'pct_eth': sim_data.pct_eth[0],
-    'beta_eth':sim_data.beta_eth[0],
-    'pct_edu': sim_data.pct_edu[0],
-    'beta_edu':sim_data.beta_edu[0]
-}
-true_params
-```
-
-#### Model 1: `sum_to_zero_vector`
+**Model 1: `sum_to_zero_vector`**
 
 This model is in file [binomial_4_preds_ozs.stan](https://github.com/stan-dev/example-models/tree/master/jupyter/sum-to-zero/stan/binomial_4_preds_ozs.stan).
 
 ```{python}
+#| output: false
 binomial_ozs_mod = CmdStanModel(stan_file=os.path.join('stan', 'binomial_4preds_ozs.stan'))
-```
-```{python}
+print("Model 1:  sum_to_zero_vector, small dataset")
 binomial_ozs_fit = binomial_ozs_mod.sample(data=data_small, parallel_chains=4)
-```
-Record the seed used for the first run and use it for all subsequent fits.
-```{python}
-a_seed = binomial_ozs_fit.metadata.cmdstan_config['seed']
-```
 
-```{python}
+a_seed = binomial_ozs_fit.metadata.cmdstan_config['seed']
+print("Model 1:  sum_to_zero_vector, large dataset")
 binomial_ozs_fit_lg = binomial_ozs_mod.sample(data=data_large, parallel_chains=4, seed=a_seed)
 ```
-
-#### Model 2:  Hard sum-to-zero constraint
+**Model 2:  Hard sum-to-zero constraint**
 
 This model is in file [binomial_4_preds_hard.stan](https://github.com/stan-dev/example-models/tree/master/jupyter/sum-to-zero/stan/binomial_4_preds_hard.stan).
-
-
 ```{python}
+#| output: false
 binomial_hard_mod = CmdStanModel(stan_file=os.path.join('stan', 'binomial_4preds_hard.stan'))
-```
-```{python}
+print("\nModel 2:  hard sum-to-zero constraint, small dataset")
 binomial_hard_fit = binomial_hard_mod.sample(data=data_small, parallel_chains=4, seed=a_seed)
-```
-```{python}
+print("Model 2:  hard sum-to-zero constraint, large dataset")
 binomial_hard_fit_lg = binomial_hard_mod.sample(data=data_large, parallel_chains=4, seed=a_seed)
 ```
 
-#### Model 3:  soft sum-to-zero constraint
+**Model 3:  soft sum-to-zero constraint**
 
 This model is in file [binomial_4_preds_soft.stan](https://github.com/stan-dev/example-models/tree/master/jupyter/sum-to-zero/stan/binomial_4_preds_soft.stan).
-
 ```{python}
+#| output: false
 binomial_soft_mod = CmdStanModel(stan_file=os.path.join('stan', 'binomial_4preds_soft.stan'))
-```
-```{python}
+print("\nModel 3:  soft sum-to-zero constraint, small dataset")
 binomial_soft_fit = binomial_soft_mod.sample(data=data_small, parallel_chains=4, seed=a_seed)
-```
-```{python}
+print("Model 3:  soft sum-to-zero constraint, large dataset")
 binomial_soft_fit_lg = binomial_soft_mod.sample(data=data_large, parallel_chains=4, seed=a_seed)
 ```
-
-#### Runtime performance
-
-In the small data regime, the soft-sum to zero takes considerably more wall-clock time to fit the data.
-On Apple M3 hardware, all three models quickly fit the large dataset.
 
 
 ### Model Checking and Comparison
 
-#### Check convergence
+#### Check implementations
 
-We check the R-hat and effective sample size (ESS) for all group-level parameters.
+If all three implementations are correct, we expect that they will produce the same
+estimates for all parameters. As always, we check the R-hat values and effective sample sizes.
+To do this, we tabulate the summary statistics from each of the three models, fit to the
+large and small datasets.
 
-In order to do this multiway comparison, we assemble the individual summaries from the 6 runs above
-into two dataframes.  We also compute the number of effective samples per second - a key metric of
-model efficiency.
-(Note:  we're using a development version of CmdStanPy to scrape time information from the CSV files
-because changes to CmdStan's `stansummary` function removed the ESS/sec metric.
-This is a workaround for now).
 
 ```{python}
 # small dataset
 ozs_fit_summary = binomial_ozs_fit.summary(sig_figs=2)
-ozs_fit_summary.index =  ozs_fit_summary.index.astype(str) + "  a) ozs"
-ozs_fit_time = binomial_ozs_fit.time
-ozs_total_time = 0
-for i in range(len(ozs_fit_time)):
-    ozs_total_time += ozs_fit_time[i]['total']
-ozs_fit_summary['ESS/sec'] = ozs_fit_summary['ESS_bulk']/ozs_total_time
+ozs_fit_summary.index =  ozs_fit_summary.index.astype(str) + "  - ozs"
+
 
 hard_fit_summary = binomial_hard_fit.summary(sig_figs=2)
-hard_fit_summary.index = hard_fit_summary.index.astype(str) + "  b) hard"
-hard_fit_time = binomial_hard_fit.time
-hard_total_time = 0
-for i in range(len(hard_fit_time)):
-    hard_total_time += hard_fit_time[i]['total']
-hard_fit_summary['ESS/sec'] = hard_fit_summary['ESS_bulk']/hard_total_time
+hard_fit_summary.index = hard_fit_summary.index.astype(str) + " - hard"
 
 soft_fit_summary = binomial_soft_fit.summary(sig_figs=2)
-soft_fit_summary.index = soft_fit_summary.index.astype(str) + "  c) soft"
-soft_fit_time = binomial_soft_fit.time
-soft_total_time = 0
-for i in range(len(soft_fit_time)):
-    soft_total_time += soft_fit_time[i]['total']
-soft_fit_summary['ESS/sec'] = soft_fit_summary['ESS_bulk']/soft_total_time
+soft_fit_summary.index = soft_fit_summary.index.astype(str) + " - soft"
 
 small_data_fits_summary = pd.concat([ozs_fit_summary, hard_fit_summary, soft_fit_summary])
 
 # large dataset
 ozs_fit_lg_summary = binomial_ozs_fit_lg.summary(sig_figs=2)
-ozs_fit_lg_summary.index =  ozs_fit_lg_summary.index.astype(str) + "  a) ozs"
-ozs_fit_time_lg = binomial_ozs_fit_lg.time
-ozs_total_time_lg = 0
-for i in range(len(ozs_fit_time_lg)):
-    ozs_total_time_lg += ozs_fit_time_lg[i]['total']
-ozs_fit_lg_summary['ESS/sec'] = ozs_fit_lg_summary['ESS_bulk']/ozs_total_time_lg
+ozs_fit_lg_summary.index =  ozs_fit_lg_summary.index.astype(str) + "  - ozs"
 
 hard_fit_lg_summary = binomial_hard_fit_lg.summary(sig_figs=2)
-hard_fit_lg_summary.index = hard_fit_lg_summary.index.astype(str) + "  b) hard"
-hard_fit_time_lg = binomial_hard_fit_lg.time
-hard_total_time_lg = 0
-for i in range(len(hard_fit_time_lg)):
-    hard_total_time_lg += hard_fit_time_lg[i]['total']
-hard_fit_lg_summary['ESS/sec'] = hard_fit_lg_summary['ESS_bulk']/hard_total_time_lg
+hard_fit_lg_summary.index = hard_fit_lg_summary.index.astype(str) + " - hard"
 
 soft_fit_lg_summary = binomial_soft_fit_lg.summary(sig_figs=2)
-soft_fit_lg_summary.index = soft_fit_lg_summary.index.astype(str) + "  c) soft"
-soft_fit_time_lg = binomial_soft_fit_lg.time
-soft_total_time_lg = 0
-for i in range(len(soft_fit_time_lg)):
-    soft_total_time_lg += soft_fit_time_lg[i]['total']
-soft_fit_lg_summary['ESS/sec'] = soft_fit_lg_summary['ESS_bulk']/soft_total_time_lg
+soft_fit_lg_summary.index = soft_fit_lg_summary.index.astype(str) + " - soft"
 
 large_data_fits_summary = pd.concat([ozs_fit_lg_summary, hard_fit_lg_summary, soft_fit_lg_summary])
 ```
 
 **Eth**
 
+*Data-generating coefficients for each `beta_eth` category and the relative percentage of observations*
+```{python}
+print("params", data_small['beta_eth'], "\npcts", data_small['pct_eth'])
+```
+
+*Fitted estimates*
 ```{python}
 beta_eth_summary = summarize_predictor(small_data_fits_summary, 'beta_eth\[')
 beta_eth_summary_lg = summarize_predictor(large_data_fits_summary, 'beta_eth\[')
-```
-
-```{python}
 small_html = style_dataframe(beta_eth_summary, 3).to_html()
 large_html = style_dataframe(beta_eth_summary_lg, 3).to_html()
 display_side_by_side(small_html, large_html)
-```
 
-```{python}
-print("params", true_params['beta_eth'], "\npcts", true_params['pct_eth'])
-```
-
-```{python}
 sigma_eth_summary = summarize_predictor(small_data_fits_summary, 'sigma_eth')
 sigma_eth_summary_lg = summarize_predictor(large_data_fits_summary, 'sigma_eth')
-
-small_html = style_dataframe(sigma_eth_summary, 3).to_html()
-large_html = style_dataframe(sigma_eth_summary_lg, 3).to_html()
+small_html = style_dataframe(sigma_eth_summary, 4).to_html()
+large_html = style_dataframe(sigma_eth_summary_lg, 4).to_html()
 display_side_by_side(small_html, large_html)
 ```
 
-**Edu**
 
+**Edu** 
+
+*Data-generating coefficients for each `beta_edu` category and the relative percentage of observations*
+```{python}
+print("params", data_small['beta_edu'], "\npcts", data_small['pct_edu'])
+```
+
+*Fitted estimates*
 ```{python}
 beta_edu_summary = summarize_predictor(small_data_fits_summary, 'beta_edu\[')
 beta_edu_summary_lg = summarize_predictor(large_data_fits_summary, 'beta_edu\[')
-```
-
-```{python}
 small_html = style_dataframe(beta_edu_summary, 3).to_html()
 large_html = style_dataframe(beta_edu_summary_lg, 3).to_html()
 display_side_by_side(small_html, large_html)
-```
 
-```{python}
-print("params", true_params['beta_edu'], "\npcts", true_params['pct_edu'])
-```
-
-```{python}
 sigma_edu_summary = summarize_predictor(small_data_fits_summary, 'sigma_edu')
 sigma_edu_summary_lg = summarize_predictor(large_data_fits_summary, 'sigma_edu')
-
-small_html = style_dataframe(sigma_edu_summary, 3).to_html()
-large_html = style_dataframe(sigma_edu_summary_lg, 3).to_html()
+small_html = style_dataframe(sigma_edu_summary, 4).to_html()
+large_html = style_dataframe(sigma_edu_summary_lg, 4).to_html()
 display_side_by_side(small_html, large_html)
 ```
 
 **Age**
 
+*Data-generating coefficients for each `beta_edu` category and the relative percentage of observations*
+```{python}
+print("params", data_small['beta_age'], "\npcts", data_small['pct_age'])
+```
+
+
+*Fitted estimates*
 ```{python}
 beta_age_summary = summarize_predictor(small_data_fits_summary, 'beta_age\[')
 beta_age_summary_lg = summarize_predictor(large_data_fits_summary, 'beta_age\[')
-```
-
-```{python}
 small_html = style_dataframe(beta_age_summary, 3).to_html()
 large_html = style_dataframe(beta_age_summary_lg, 3).to_html()
 display_side_by_side(small_html, large_html)
-```
 
-```{python}
-print("params", true_params['beta_age'], "\npcts", true_params['pct_age'])
-```
-
-```{python}
 sigma_age_summary = summarize_predictor(small_data_fits_summary, 'sigma_age')
 sigma_age_summary_lg = summarize_predictor(large_data_fits_summary, 'sigma_age')
-
-small_html = style_dataframe(sigma_age_summary, 3).to_html()
-large_html = style_dataframe(sigma_age_summary_lg, 3).to_html()
+small_html = style_dataframe(sigma_age_summary, 4).to_html()
+large_html = style_dataframe(sigma_age_summary_lg, 4).to_html()
 display_side_by_side(small_html, large_html)
 ```
 
-All models have R-hat values of 1.00 for all group-level parameters and high effective sample sizes.
+**Model efficiency**
 
-Comparison with the true parameters shows that the model recovers the sign of the parameter, but not the exact value.
-With more data and only a few categories, the model does a better job of recovering the true parameters.
+Model efficiency is measured by iterations per second, however, as the draws from the MCMC sampler
+may be correlated, we need to compute the number of effective samples across all chains
+divided by the total sampling time - this is *ESS_bulk/s*, the effective samples per second.
+The following table shows the average runtime for 100 runs
+of each of the three models on large and small datasets.
+The `sum_to_zero_vector` is far more efficient than either the hard or soft sum-to-zero constraint.
 
-In almost all cases, estimates for each parameter are the same across implementations to 2 significant figures.
-In a few cases they are off by 0.01; where they are off, the percentage of observations for that parameter is correspondingly low.
-This is as expected; all three implementations of the sum-to-zero constraint do the same thing;
-the `sum_to_zero_vector` implementation is both fast and efficient.
-
-#### Calibration check
-
-All models contain a `generated quantities` block, which creates `y_rep`,
-the [posterior predictive sample](https://mc-stan.org/docs/stan-users-guide/posterior-prediction.html).
-If the model is well-calibrated for the data, 
-we expect that at least 50% of the time the observed value of `y` will fall in the central 50% interval of the `y_rep` sample estimates.
 
 ```{python}
-from utils_dataviz import ppc_central_interval
+with open(os.path.join('binomial_runtimes_small.json'), 'r') as file:
+     data = json.load(file)
+df_small = pd.DataFrame(data)
 
-y_rep_ozs = binomial_ozs_fit.y_rep.astype(int)
-print("sum_to_zero_vector fit", ppc_central_interval(y_rep_ozs, sim_data.pos_tests[0]))
+with open(os.path.join('binomial_runtimes_large.json'), 'r') as file:
+     data = json.load(file)
+df_large = pd.DataFrame(data)
 
-y_rep_hard = binomial_hard_fit.y_rep.astype(int)
-print("Hard sum-to-zero fit", ppc_central_interval(y_rep_hard, sim_data.pos_tests[0]))
-
-y_rep_soft = binomial_soft_fit.y_rep.astype(int)
-print("Soft sum-to-zero fit", ppc_central_interval(y_rep_soft, sim_data.pos_tests[0]))
+small_html = style_dataframe(df_small, 3).to_html()
+large_html = style_dataframe(df_large, 3).to_html()
+display_side_by_side(small_html, large_html)
 ```
+
+These comparisons demonstrate that
+
+* All models have R-hat values of 1.00 for all group-level parameters and high effective sample sizes.
+
+* The models recover the sign of the parameter, but not the exact value. 
+In the case of lots of observations and only a few categories they do a better job of recovering the true parameters.
+
+* In almost all cases, estimates for each parameter are the same across implementations to 2 significant figures.
+In a few cases they are off by 0.01; where they are off, the percentage of observations for that parameter is correspondingly low.
+
+This is as expected; all three implementations of the sum-to-zero constraint do the same thing;
+the `sum_to_zero_vector` implementation is the most efficient and therefore fastest.
+
 
 #### Prior predictive checks
 
-Prior and posterior predictive checks are two cases of the general concept of predictive checks,
-just conditioning on different things (no data and the observed data, respectively).
-In the previous section, we compared the `y_rep`, the replicated dataset, with the
-observed dataset `y`.
-
 [Prior predictive checks](https://mc-stan.org/docs/stan-users-guide/posterior-predictive-checks.html#prior-predictive-checks)
 simulate data directly from the prior, in the absense of any observed data.
-The resulting datasets, often called `y_sim`, instead of `y_rep`,
-show the possible range of data that is consistent with the priors.
 Here we use the simulated dataset to examine the prior marginal variances
 of the elements of the sum-to-zero vector under the hard-sum-to-zero constraint
 and the built-in `sum_to_zero` transform.
+In particular, we are interested in the marginal variances of the elements of the sum-to-zero constrained parameters.
 
-Just as we wrote a Stan program corresponding to the true data-generating model,
-resulting in the observed data `y`, we can write a Stan program which
-simply omits the likelihood statement from the model block, as well as any
-corresponding computations in the transformed parameters and generated quantities block.
+We have written two models:  [binomial_4preds_ozs_ppc.stan](https://github.com/stan-dev/example-models/tree/master/jupyter/sum-to-zero/stan/binomial_4preds_ozs_ppc.stan)
+and [binomial_4preds_hard_ppc.stan](https://github.com/stan-dev/example-models/tree/master/jupyter/sum-to-zero/stan/binomial_4preds_hard_ppc.stan).
+We generate a sample from each, and compare the marginal variances of the elements of sum-to-zero constrained parameter `beta_age`.
 
-To do this, we delete the likelihood statement, and any statements that generate auxiliary variables it needs.
-The model parameters block is unchanged.
-The model is in file [binomial_4preds_ozs_ppc.stan](https://github.com/stan-dev/example-models/tree/master/jupyter/sum-to-zero/stan/binomial_4preds_ozs_ppc.stan).
-
-**binomial_4preds_ozs_ppc.stan**
-
-```stan
-// generate sample from model priors, (before seeing any data)
-data {
-  int<lower=1> N; // number of strata
-  int<lower=1> N_age;
-  int<lower=1> N_eth;
-  int<lower=1> N_edu;
-  // omit observational data
-}
-transformed data {
-  // scaling factors for marginal variances of sum_to_zero_vectors
-  // https://discourse.mc-stan.org/t/zero-sum-vector-and-normal-distribution/38296
-  real s_age = sqrt(N_age * inv(N_age - 1));
-  real s_eth = sqrt(N_eth * inv(N_eth - 1));
-  real s_edu = sqrt(N_edu * inv(N_edu - 1));
-}
-parameters {
-  real beta_0;
-  real beta_sex;
-  real<lower=0> sigma_age, sigma_eth, sigma_edu;
-  sum_to_zero_vector[N_age] beta_age;
-  sum_to_zero_vector[N_eth] beta_eth;
-  sum_to_zero_vector[N_edu] beta_edu;
-}
-model {
-  // omit likelihood
-  // priors
-  beta_0 ~ normal(0, 2.5);
-  beta_sex ~ std_normal();
-  sigma_eth ~ std_normal();
-  sigma_age ~ std_normal();
-  sigma_edu ~ std_normal();
-
-  // centered parameterization
-  // scale normal priors on sum_to_zero_vectors
-  beta_age ~ normal(0, s_age * sigma_age);
-  beta_eth ~ normal(0, s_eth * sigma_eth);
-  beta_edu ~ normal(0, s_edu * sigma_edu);
-}
-```
-
-Running this model will produce a sample of draws according to the prior distribution; from this we can infer the range of possible parameter values which are consistent with these priors.
+**Marginal variances of the hard sum-to-zero constraint, sample from the prior**
 
 ```{python}
-binomial_ozs_ppc_mod = CmdStanModel(stan_file=os.path.join('stan', 'binomial_4preds_ozs_ppc.stan'))
-binomial_ozs_ppc_fit = binomial_ozs_ppc_mod.sample(data=data_small, parallel_chains=4, seed=a_seed)
-```
-
-```{python}
+#| output: false
 binomial_hard_ppc_mod = CmdStanModel(stan_file=os.path.join('stan', 'binomial_4preds_hard_ppc.stan'))
-binomial_hard_ppc_fit = binomial_hard_ppc_mod.sample(data=data_small, parallel_chains=4, seed=a_seed)
+binomial_hard_ppc_fit = binomial_hard_ppc_mod.sample(data=data_small, parallel_chains=4)
 ```
-
-Without any data, the sampler has many [divergent transitions](https://mc-stan.org/docs/reference-manual/mcmc.html#divergent-transitions)
-because these priors are putting positive probability on regions of the parameter space with high curvature and / or low numerical accuracy;
-however, conditional on the data, those regions have zero probability, cf: [this discussion](https://discourse.mc-stan.org/t/meaning-of-divergences-in-prior-predictive-checks/10759/3).
-
-Here, we are interested in the marginal variances of the elements of the sum-to-zero effect, in order to investigate the correlation of the constrained parameters, i.e., the $N^{th}$ element, so we ignore these warnings, since we know that with data, these warnings go away.
-
-**Marginal variances of the built-in `zero_sum_vector`**
-
 ```{python}
-age_ozs = binomial_ozs_ppc_fit.beta_age
-np.var(age_ozs, axis=0)
+np.var(binomial_hard_ppc_fit.beta_age, axis=0)
 ```
 
-**Marginal variances of the hard sum-to-zero constraint**
-
-```{python}
-age_hard = binomial_hard_ppc_fit.beta_age
-np.var(age_hard, axis=0)
-```
-
-By simulating data from the priors, we can see how the hard sum-to-zero constraint distorts the variance of the $N^{th}$ element.
+The above summaries show how the hard sum-to-zero constraint distorts the variance of the $N^{th}$ element.
 This is only a problem for very sparse datasets, where the prior swamps the data.
-To see this, we fit both models to the tiny dataset.
+With data, this problem goes away; to see this we fit the hard sum-to-zero constraint model
+on the tiny and small datasets.
 
+**Marginal variances of the hard sum-to-zero constraint, tiny dataset**
 
 ```{python}
-binomial_ozs_fit_tiny = binomial_ozs_mod.sample(data=data_tiny, parallel_chains=4, seed=a_seed)
-binomial_hard_fit_tiny = binomial_hard_mod.sample(data=data_tiny, parallel_chains=4, seed=a_seed)
+#| output: false
+binomial_hard_fit_tiny = binomial_hard_mod.sample(data=data_tiny, parallel_chains=4)
+```
+```{python}
+np.var(binomial_hard_fit_tiny.beta_age, axis=0)
 ```
 
+**Marginal variances of the hard sum-to-zero constraint, small dataset**
+
 ```{python}
-age_ozs_tiny = binomial_ozs_fit_tiny.beta_age
-marginal_vars_ozs = np.var(age_ozs, axis=0)
-age_hard_tiny = binomial_hard_fit_tiny.beta_age
-marginal_vars_hard = np.var(age_hard, axis=0)
-print("Tiny dataset, marginal variances beta age - sum_to_zero_vector\n", marginal_vars_ozs)
-print("\n\nTiny dataet, marginal variances beta age - hard sum-to-zero constraint\n", marginal_vars_hard)
+#| output: false
+binomial_hard_fit_small = binomial_hard_mod.sample(data=data_small, parallel_chains=4)
+```
+```{python}
+np.var(binomial_hard_fit_small.beta_age, axis=0)
 ```
 
-With more data, this problem goes away.
-To see this, we compare the marginal variances from the small dataset fits.
+The marginal variances for the `sum_to_zero_vector` elements are roughly equal in both the prior
+and the posterior.
 
+**Marginal variances of the built-in `sum_to_zero_vector`, sample from the prior**
 
 ```{python}
-age_ozs = binomial_ozs_fit.beta_age
-marginal_vars_ozs = np.var(age_ozs, axis=0)
-age_hard = binomial_hard_fit.beta_age
-marginal_vars_hard = np.var(age_hard, axis=0)
-print("Small dataset, marginal variances beta age - sum_to_zero_vector\n", marginal_vars_ozs)
-print("\n\nSmall dataset, marginal variances beta age - hard sum-to-zero constraint\n", marginal_vars_hard)
+#| output: false
+binomial_ozs_ppc_mod = CmdStanModel(stan_file=os.path.join('stan', 'binomial_4preds_ozs_ppc.stan'))
+binomial_ozs_ppc_fit = binomial_ozs_ppc_mod.sample(data=data_small, parallel_chains=4)
+```
+```{python}
+np.var(binomial_ozs_ppc_fit.beta_age, axis=0)
+```
+
+**Marginal variances of the built-in `sum_to_zero_vector`, small dataset**
+
+```{python}
+#| output: false
+binomial_hard_fit_small = binomial_hard_mod.sample(data=data_small, parallel_chains=4)
+```
+```{python}
+np.var(binomial_hard_fit_small.beta_age, axis=0)
 ```
 
 
 ### Discussion
 
-* For a multi-level model group-level categorical predictors the `sum_to_zero_vector` provides fast results and good effective sample sizes for both datasets.
+Comparison of these three models with different data regimes demonstrates the following.
+
+* For a multi-level model with group-level categorical predictors the `sum_to_zero_vector` provides fast results and good effective sample sizes for both datasets.
 
 * Model [binomial_4preds_ozs.stan](https://github.com/stan-dev/example-models/tree/master/jupyter/sum-to-zero/stan/binomial_4preds_ozs.stan).
 shows how to properly scale the variance of a `sum_to_zero_vector` constrained parameter in order to put a standard normal prior on it.
 
-**Workflow Practices**
-
 * Prior predictive checks demonstrate the difference between the marginal variances of
 the `sum_to_zero_vector` and hard sum-to-zero implementations.
-
-* Posterior predictive checks to demonstrate that the model is well-calibrated to the data.
-
-
 
 
 ## Spatial Models with an ICAR component
@@ -945,50 +630,7 @@ available from GitHub repo:  [https://github.com/mitzimorris/geomed_2024](https:
 * [The BYM2 model in Stan](https://github.com/mitzimorris/geomed_2024/blob/main/python-notebooks/h5_bym2.ipynb)
 * [The BYM2_multicomp model in Stan](https://github.com/mitzimorris/geomed_2024/blob/main/python-notebooks/h6_bym2_multicomp.ipynb)
 
-
-### Example dataset:  New York City traffic accidents
-
-The dataset we're using is that used in the analysis published in 2019
-[Bayesian Hierarchical Spatial Models: Implementing the Besag York Mollié Model in Stan](https://www.sciencedirect.com/science/article/pii/S1877584518301175).
-
-The data consists of motor vehicle collisions in New York City,
-as recorded by the NYC Department of Transportation, between the years 2005-2014,
-restricted to collisions involving school age children 5-18 years of age as pedestrians.
-Each crash was localized to the US Census tract in which it occurred, using boundaries from the 2010 United States Census,
-using the [2010 Census block map for New York City](https://data.cityofnewyork.us/City-Government/2010-Census-Blocks/v2h8-6mxf).  File `data/nyc_study.geojson` contains the study data and census tract ids and geometry.
-
-```{python}
-nyc_geodata = gpd.read_file(os.path.join('data', 'nyc_study.geojson'))
-nyc_geodata.columns
-nyc_geodata[['BoroName', 'NTAName', 'count', 'kid_pop']].head(4)
-```
-
-The shapefiles from the Census Bureau connect Manhattan to Brooklyn and Queens, but for this analysis, Manhattan is quite separate from Brooklyn and Queens.  Getting the data assembled in the order required for our analysis requires data munging, encapsulated in the Python functions in file `utils_nyc_map.py`.
-The function `nyc_sort_by_comp_size` removes any neighbor pairs between tracts in Manhattan and any tracts in Brooklyn or Queens and updates the neighbor graph accordingly.  It returns a clean neighbor graph and the corresponding geodataframe, plus a list of the component sizes.   The list is sorted so that the largest component (Brooklyn and Queens) is first, and singleton nodes are last.
-
-```{python}
-from utils_nyc_map import nyc_sort_by_comp_size
-
-(nyc_nbs, nyc_gdf, nyc_comp_sizes) = nyc_sort_by_comp_size(nyc_geodata)
-nyc_comp_sizes
-```
-
-To check our work we examine both the geodataframe and the map.
-
-```{python}
-nyc_gdf[['BoroName', 'NTAName', 'count', 'kid_pop']].head(4)
-```
-
-```{python}
-nyc_gdf[['BoroName', 'NTAName', 'count', 'kid_pop']].tail(4)
-```
-
-```{python}
-from splot.libpysal import plot_spatial_weights 
-plot_spatial_weights(nyc_nbs, nyc_gdf)
-```
-
-### Model 1: The BYM2 model,  Riebler et al. 2016
+### ICAR Models
 
 The key element of the BYM2 model is the ICAR component.
 Its conditional specification is a
@@ -1002,7 +644,7 @@ $$ p(\phi) \propto \exp \left\{ {- \frac{1}{2}} \sum_{i \sim j}{({\phi}_i - {\ph
 Each ${({\phi}_i - {\phi}_j)}^2$ contributes a
 penalty term based on the distance between the values of neighboring regions.
 However, $\phi$ is non-identifiable, constant added to $\phi$ washes out of ${\phi}_i - {\phi}_j$.
-Therefore, a sum-to-zero constraint is needed to both identify and center $\phi$.
+Therefore, **a sum-to-zero constraint is needed to both identify and center $\phi$.**
 
 The Stan implementation of the ICAR component computes the sum of the pairwise distances
 by representing the spatial adjacency matrix as a array of pairs of neighbor indices.
@@ -1022,21 +664,6 @@ model {
   target += -0.5 * dot_self(phi[neighbors[1]] - phi[neighbors[2]]);  // ICAR prior
 ```
 
-In this section, we compare three ways of implementing the sum-to-zero constraint on `phi`.
-
-* In model [bym2_ozs.stan](https://github.com/stan-dev/example-models/tree/master/jupyter/sum-to-zero/stan/bym2_ozs.stan), `phi` is declared as a `sum_to_zero_vector`.
-
-* In model [bym2_hard.stan](https://github.com/stan-dev/example-models/tree/master/jupyter/sum-to-zero/stan/bym2_hard.stan), `phi_raw` is the unconstrained parameter of size `N - 1`,
-and the N-length parameter `phi` is computed in the `transformed parameters` block.
-
-* In model [bym2_soft.stan](https://github.com/stan-dev/example-models/tree/master/jupyter/sum-to-zero/stan/bym2_soft.stan), `phi` is declared as an ordinary vector,
-and the sum-to-zero constraint is combined with the prior:
-
-```stan
-  target += (-0.5 * dot_self(phi[neighbors[1]] - phi[neighbors[2]])
-	     + normal_lupdf(sum(phi) | 0, 0.001 * rows(phi)));
-```
-
 The ICAR model requires that the neighbor graph is fully connected for two reasons:
 
 * The joint distribution is computed from the pairwise differences between a node and its neighbors;
@@ -1046,20 +673,45 @@ singleton nodes have no neighbors and are therefore undefined.
 a sum-to-zero constraint on the entire vector fails to properly identify the model.
 
 Because the BYM2 model includes an ICAR component, it too requires a fully connected neighbor graph.
-We can either artificially connect the map, or we can analyze the NYC dataset on a per-component basis,
-starting with the largest component which encompasses Brooklyn and Queens (excepting the Rockaways).
+In order to apply the BYM2 model to the full NYC dataset, it is necessary to
+extend the BYM2 model to account for disconnected components and singleton nodes.
 
-```{python}
-from libpysal.weights import Queen
-brklyn_qns_gdf = nyc_gdf[nyc_gdf['comp_id']==0].reset_index(drop=True)
-brklyn_qns_nbs = Queen.from_dataframe(brklyn_qns_gdf , geom_col='geometry')
-plot_spatial_weights(brklyn_qns_nbs, brklyn_qns_gdf ) 
+First we use the BYM2 model for fully connected graphs
+to compare implementations of the sum-to-zero vector on `phi`,
+and then we extend the BYM2 model following the INLA implementation
+developed by Freni-Sterrantino et al. in 2018 and presented in
+[A note on intrinsic Conditional Autoregressive models for disconnected graphs](https://arxiv.org/abs/1705.04854).
 
-print(f'number of components: {brklyn_qns_nbs.n_components}')
-print(f'islands? {brklyn_qns_nbs.islands}')
-print(f'max number of neighbors per node: {brklyn_qns_nbs.max_neighbors}')
-print(f'mean number of neighbors per node: {brklyn_qns_nbs.mean_neighbors}')
-```
+The dataset we're using is that used in the analysis published in 2019
+[Bayesian Hierarchical Spatial Models: Implementing the Besag York Mollié Model in Stan](https://www.sciencedirect.com/science/article/pii/S1877584518301175).
+It data consists of motor vehicle collisions in New York City,
+as recorded by the NYC Department of Transportation, between the years 2005-2014,
+restricted to collisions involving school age children 5-18 years of age as pedestrians.
+Each crash was localized to the US Census tract in which it occurred, using boundaries from the 2010 United States Census,
+using the [2010 Census block map for New York City](https://data.cityofnewyork.us/City-Government/2010-Census-Blocks/v2h8-6mxf).
+New York City is comprised of several large and small islands, a chunk of the mainland (the Bronx), and the southern tip of Long Island Sound (Brooklyn and Queens).
+To analyze the full New York City dataset requires the extended BYM2 model, which we do in the second part of this section.
+
+### Model 1: The BYM2 model,  Riebler et al. 2016
+
+We compare three implementations of the BYM2 model which differ only in their implementation of `phi`,
+which is constrained to sum to zero.
+
+**BYM2 v1: `sum_to_zero_vector`**
+
+Parameter `phi` is declared as a `sum_to_zero_vector`.
+See file [bym2_ozs.stan](https://github.com/stan-dev/example-models/tree/master/jupyter/sum-to-zero/stan/bym2_ozs.stan).
+
+**BYM2 v2:  Hard sum-to-zero constraint**
+
+Parameter `phi_raw` is an vector of size N-1 and the N-length vector `phi` is computed in the `transformed parameters` block.
+See file [bym2_hard.stan](https://github.com/stan-dev/example-models/tree/master/jupyter/sum-to-zero/stan/bym2_hard.stan).
+
+**BYM2 v3:  soft sum-to-zero constraint**
+
+Parameter `phi` is a vector of size N and its sum is soft-centered on $0$.
+See file [bym2_soft.stan](https://github.com/stan-dev/example-models/tree/master/jupyter/sum-to-zero/stan/bym2_soft.stan).
+
 
 #### Data assembly
 
@@ -1079,6 +731,7 @@ The inputs to the BYM2 model are
   + `array[2, N_edges] int<lower = 1, upper = N> neighbors` - the graph structure
   + `real tau` - the scaling factor, introduced in the BYM2
 
+::: {.callout-note}
 The scaling factor `tau` was introduced by Riebler et al so that the
 variance of the spatial and ordinary random effects are both approximately equal to 1,
 thus allowing for a straightforward estimate of the amount of spatial and non-spatial variance.
@@ -1086,22 +739,49 @@ We have written a helper function called `get_scaling_factor`, in file
 [utils_bym2.py](https://github.com/stan-dev/example-models/tree/master/jupyter/sum-to-zero/utils_bym2.py)
 which takes as its argument the neighbor graph and computes the geometric mean of the
 corresponding adjacency matrix.
+:::
+
+To assemble the spatial data from the US Census data maps we use a set of utilities
+described more fully in notebooks 2 and 5 of the [geomed_2024 Spatial Data Processing in Stan workshop](https://github.com/mitzimorris/geomed_2024).
+The neighbors graph of New York City consists of several large connected components,
+notably Brooklyn and Queens, the Bronx, Manhattan, and Staten Island, and a few other
+smaller components and singletons.
 
 ```{python}
-from utils_bym2 import get_scaling_factor, nbs_to_adjlist
+from utils_nyc_map import nyc_sort_by_comp_size
+nyc_geodata = gpd.read_file(os.path.join('data', 'nyc_study.geojson'))
+(nyc_nbs, nyc_gdf, nyc_comp_sizes) = nyc_sort_by_comp_size(nyc_geodata)
 
-# design matrix
+from splot.libpysal import plot_spatial_weights 
+print("New York City neighbors graph")
+plot_spatial_weights(nyc_nbs, nyc_gdf)
+```
+
+Because the BYM2 model requires that the neighbors graph be fully connected,
+for this analysis, we restrict this analysis to just Brooklyn and Queens,
+the largest subcomponent.
+
+```{python}
+from libpysal.weights import Queen
+brklyn_qns_gdf = nyc_gdf[nyc_gdf['comp_id']==0].reset_index(drop=True)
+brklyn_qns_nbs = Queen.from_dataframe(brklyn_qns_gdf , geom_col='geometry')
+from utils_bym2 import get_scaling_factor, nbs_to_adjlist
+brklyn_qns_nbs_adj = nbs_to_adjlist(brklyn_qns_nbs)
+tau = get_scaling_factor(brklyn_qns_nbs)
+```
+The NYC predictors are on very different scales. To correct this, we log transform
+two of the four columns of the design matrix.
+
+```{python}
 design_vars = np.array(['pct_pubtransit','med_hh_inc', 'traffic', 'frag_index'])
 design_mat = brklyn_qns_gdf[design_vars].to_numpy()
 design_mat[:, 1] = np.log(design_mat[:, 1])
 design_mat[:, 2] = np.log(design_mat[:, 2])
+```
 
-# neighbors array
-brklyn_qns_nbs_adj = nbs_to_adjlist(brklyn_qns_nbs)
+We assemble all inputs into dictionary `brklyn_qns_data`.
 
-# scaling factor
-tau = get_scaling_factor(brklyn_qns_nbs)
-
+```{python}
 brklyn_qns_data = {"N":brklyn_qns_gdf.shape[0],
             "y":brklyn_qns_gdf['count'].astype('int'),
             "E":brklyn_qns_gdf['kid_pop'].astype('int'),
@@ -1115,183 +795,65 @@ brklyn_qns_data = {"N":brklyn_qns_gdf.shape[0],
 
 #### Model fitting
 
-These models require larger numbers of warmup iterations in order to reach convergence for all parameters,
+The BYM2 model requires many warmup iterations in order to reach convergence for all parameters,
 including hyperparameters `rho` and `sigma`.
+We run all three models using the same seed, in order to make the initial parameters as similar
+as possible.
+
 
 ```{python}
+#| output: false
 bym2_ozs_mod = CmdStanModel(stan_file=os.path.join('stan', 'bym2_ozs.stan'))
-brklyn_qns_ozs_fit = bym2_ozs_mod.sample(data=brklyn_qns_data, iter_warmup=5000)
-```
-
-```{python}
+brklyn_qns_ozs_fit = bym2_ozs_mod.sample(data=brklyn_qns_data, iter_warmup=7000)
 a_seed = brklyn_qns_ozs_fit.metadata.cmdstan_config['seed']
-```
 
-```{python}
-bym2_soft_mod = CmdStanModel(stan_file=os.path.join('stan', 'bym2_soft.stan'))
-brklyn_qns_soft_fit = bym2_soft_mod.sample(data=brklyn_qns_data, iter_warmup=5000, seed=a_seed)
-```
-
-```{python}
 bym2_hard_mod = CmdStanModel(stan_file=os.path.join('stan', 'bym2_hard.stan'))
-brklyn_qns_hard_fit = bym2_hard_mod.sample(data=brklyn_qns_data, iter_warmup=5000, seed=a_seed)
+brklyn_qns_hard_fit = bym2_hard_mod.sample(data=brklyn_qns_data, iter_warmup=7000, seed=a_seed)
+
+bym2_soft_mod = CmdStanModel(stan_file=os.path.join('stan', 'bym2_soft.stan'))
+brklyn_qns_soft_fit = bym2_soft_mod.sample(data=brklyn_qns_data, iter_warmup=7000, seed=a_seed)
 ```
 
-#### Model Comparison
+#### Check implementations
 
-Get summaries and compare fits.
+If all three implementations are correct, we expect that they will produce the same
+estimates for all parameters. As always, we check the R-hat values and effective sample sizes.
+To do this, we tabulate the summary statistics from each of the three models
+for the hierarchical parameters `beta`, `sigma`, and `rho`.
 
 ```{python}
 brklyn_qns_ozs_summary = brklyn_qns_ozs_fit.summary()
-brklyn_qns_ozs_summary.index =  brklyn_qns_ozs_summary.index.astype(str) + "  a) ozs"
-ozs_fit_time = brklyn_qns_ozs_fit.time
-ozs_total_time = 0
-for i in range(len(ozs_fit_time)):
-    ozs_total_time += ozs_fit_time[i]['total']
-brklyn_qns_ozs_summary['ESS/sec'] = brklyn_qns_ozs_summary['ESS_bulk']/ozs_total_time
-
+brklyn_qns_ozs_summary.index = brklyn_qns_ozs_summary.index.astype(str) + "  - ozs"
 
 brklyn_qns_hard_summary = brklyn_qns_hard_fit.summary()
-brklyn_qns_hard_summary.index = brklyn_qns_hard_summary.index.astype(str) + "  b) hard"
-hard_fit_time = brklyn_qns_hard_fit.time
-hard_total_time = 0
-for i in range(len(hard_fit_time)):
-    hard_total_time += hard_fit_time[i]['total']
-brklyn_qns_hard_summary['ESS/sec'] = brklyn_qns_hard_summary['ESS_bulk']/hard_total_time
+brklyn_qns_hard_summary.index = brklyn_qns_hard_summary.index.astype(str) + " - hard"
 
 brklyn_qns_soft_summary = brklyn_qns_soft_fit.summary()
-brklyn_qns_soft_summary.index = brklyn_qns_soft_summary.index.astype(str) + "  c) soft"
-soft_fit_time = brklyn_qns_soft_fit.time
-soft_total_time = 0
-for i in range(len(soft_fit_time)):
-    soft_total_time += soft_fit_time[i]['total']
-brklyn_qns_soft_summary['ESS/sec'] = brklyn_qns_soft_summary['ESS_bulk']/soft_total_time
+brklyn_qns_soft_summary.index = brklyn_qns_soft_summary.index.astype(str) + " - soft"
 
 brklyn_qns_fits_summary = pd.concat([brklyn_qns_ozs_summary, brklyn_qns_hard_summary, brklyn_qns_soft_summary])
-```
-
-```{python}
 beta_summary = summarize_predictor(brklyn_qns_fits_summary, 'beta')
 sigma_summary = summarize_predictor(brklyn_qns_fits_summary, 'sigma')
 rho_summary = summarize_predictor(brklyn_qns_fits_summary, 'rho')
 
 brklyn_qns_summary = pd.concat([beta_summary, sigma_summary, rho_summary])
-```
-
-```{python}
 display(HTML(style_dataframe(brklyn_qns_summary, 3).to_html()))
 ```
 
-We can repeat this procedure with the next largest component, the Bronx (excepting City Island),
-which has 329 regions, roughly 1/3 of the size of Brooklyn-Queens, with 1360 regions.
-
-```{python}
-bronx_gdf = nyc_gdf[nyc_gdf['comp_id']==1].reset_index(drop=True)
-print(f'number of regions: {bronx_gdf.shape[0]}')
-bronx_nbs = Queen.from_dataframe(bronx_gdf , geom_col='geometry')
-plot_spatial_weights(bronx_nbs, bronx_gdf ) 
-
-print(f'number of components: {bronx_nbs.n_components}')
-print(f'islands? {bronx_nbs.islands}')
-print(f'max number of neighbors per node: {bronx_nbs.max_neighbors}')
-print(f'mean number of neighbors per node: {bronx_nbs.mean_neighbors}')
-```
-
-```{python}
-# design matrix
-design_vars = np.array(['pct_pubtransit','med_hh_inc', 'traffic', 'frag_index'])
-design_mat = bronx_gdf[design_vars].to_numpy()
-design_mat[:, 1] = np.log(design_mat[:, 1])
-design_mat[:, 2] = np.log(design_mat[:, 2])
-
-# neighbors array
-bronx_nbs_adj = nbs_to_adjlist(bronx_nbs)
-
-# scaling factor
-tau = get_scaling_factor(bronx_nbs)
-
-bronx_data = {"N":bronx_gdf.shape[0],
-              "y":bronx_gdf['count'].astype('int'),
-              "E":bronx_gdf['kid_pop'].astype('int'),
-              "K":4,
-              "xs":design_mat,
-              "N_edges": bronx_nbs_adj.shape[1],
-              "neighbors": bronx_nbs_adj,
-              "tau": tau
-}
-```
-
-```{python}
-bronx_ozs_fit = bym2_ozs_mod.sample(data=bronx_data, iter_warmup=5000)
-```
-
-```{python}
-a_seed = bronx_ozs_fit.metadata.cmdstan_config['seed']
-```
-
-```{python}
-bronx_soft_fit = bym2_soft_mod.sample(data=bronx_data, iter_warmup=5000, seed=a_seed)
-```
-
-```{python}
-bronx_hard_fit = bym2_hard_mod.sample(data=bronx_data, iter_warmup=5000, seed=a_seed)
-```
-
-```{python}
-bronx_ozs_summary = bronx_ozs_fit.summary()
-bronx_ozs_summary.index =  bronx_ozs_summary.index.astype(str) + "  a) ozs"
-ozs_fit_time = bronx_ozs_fit.time
-ozs_total_time = 0
-for i in range(len(ozs_fit_time)):
-    ozs_total_time += ozs_fit_time[i]['total']
-bronx_ozs_summary['ESS/sec'] = bronx_ozs_summary['ESS_bulk']/ozs_total_time
-
-
-bronx_hard_summary = bronx_hard_fit.summary()
-bronx_hard_summary.index = bronx_hard_summary.index.astype(str) + "  b) hard"
-hard_fit_time = bronx_hard_fit.time
-hard_total_time = 0
-for i in range(len(hard_fit_time)):
-    hard_total_time += hard_fit_time[i]['total']
-bronx_hard_summary['ESS/sec'] = bronx_hard_summary['ESS_bulk']/hard_total_time
-
-bronx_soft_summary = bronx_soft_fit.summary()
-bronx_soft_summary.index = bronx_soft_summary.index.astype(str) + "  c) soft"
-soft_fit_time = bronx_soft_fit.time
-soft_total_time = 0
-for i in range(len(soft_fit_time)):
-    soft_total_time += soft_fit_time[i]['total']
-bronx_soft_summary['ESS/sec'] = bronx_soft_summary['ESS_bulk']/soft_total_time
-
-bronx_fits_summary = pd.concat([bronx_ozs_summary, bronx_hard_summary, bronx_soft_summary])
-```
-
-```{python}
-beta_summary = summarize_predictor(bronx_fits_summary, 'beta')
-sigma_summary = summarize_predictor(bronx_fits_summary, 'sigma')
-rho_summary = summarize_predictor(bronx_fits_summary, 'rho')
-
-bronx_summary = pd.concat([beta_summary, sigma_summary, rho_summary])
-
-display(HTML(style_dataframe(bronx_summary, 3).to_html()))
-```
-
-#### Discussion
-
-All implementations return almost identical estimates.
-The sum_to_zero_vector consistently has the fastest running time.
-The marginal variances of the spatial component `phi` are roughly the same across all models;
-presumably due to the fact that the ICAR prior is properly constraining the variances.
+The `sum_to_zero` vector is the most efficient.
+In contrast to the outcomes for the binomial model above,
+the soft sum-to-zero constraint is more efficient than the hard sum-to-zero constraint.
 
 ### Model 2: The BYM2_multicomp model, Freni-Sterrantino et al, 2018
 
-In the previous section, we analyzed the New York City component-wise.
-This is highly unsatisfactory.
 In order to apply the BYM2 model to the full NYC dataset, it is necessary to
 extend the BYM2 model to account for disconnected components and singleton nodes.
+(The alternative is to add edges to the neighbor graphs so that the neighbors graph
+is a single connected component.  This is problematic, see Notebook 6
+[The BYM2_multicomp model in Stan](https://github.com/mitzimorris/geomed_2024/blob/main/python-notebooks/h6_bym2_multicomp.ipynb) for details.)
 
-This has been done by Freni-Sterrantino et al. in 2018 for INLA, and presented in:
-[A note on intrinsic Conditional Autoregressive models for disconnected graphs](https://arxiv.org/abs/1705.04854).
+In [A note on intrinsic Conditional Autoregressive models for disconnected graphs](https://arxiv.org/abs/1705.04854) Freni-Sterrantino et al. in 2018, the authors
+show how to extend the BYM2 model to handle disconnected components and singleton nodes.
 They provide the following recommendations:
 
 * Non-singleton nodes are given the BYM2 prior
@@ -1302,10 +864,8 @@ They provide the following recommendations:
 We have followed these recommendations and implemented this model in Stan.
 The full model is in file
 [bym2_multicomp.stan](https://github.com/stan-dev/example-models/tree/master/jupyter/sum-to-zero/stan/bym2_multicomp.stan)
-For an in-depth discussion of this model, see notebook
-* [The BYM2_multicomp model in Stan](https://github.com/mitzimorris/geomed_2024/blob/main/python-notebooks/h6_bym2_multicomp.ipynb)
 
-For this case study, we provide 2 implementations of the BYM2_multicomp model:
+For this case study, we compare 2 implementations of the BYM2_multicomp model:
 one which uses the `sum_to_zero_vector` and one which implements the soft sum-to-zero constraint.
 
 It is necessary to constrain the  the elements of the spatial effects vector `phi` on a component-by-component basis.
@@ -1411,25 +971,30 @@ chapter on user-defined functions for details.
 
 #### Data Assembly
 
+The requisite data-preprocessing of the spatial data is handled by Python helper functions.
 The helper function `nyc_soft_by_comp_size` adds component info to the geodataframe.
-It also returns the neighbor graph over the full dataset, plus a list of component sizes.
+It returns the expanded geodataframe, the neighbor graph, and a list of component sizes.
 
 ```{python}
 from utils_nyc_map import nyc_sort_by_comp_size
 from utils_bym2 import nbs_to_adjlist, get_scaling_factors
 
+nyc_geodata = gpd.read_file(os.path.join('data', 'nyc_study.geojson'))
 (nyc_nbs, nyc_gdf, nyc_comp_sizes) = nyc_sort_by_comp_size(nyc_geodata)
 
-# design matrix
+nyc_nbs_adj = nbs_to_adjlist(nyc_nbs)
+component_sizes = [x for x in nyc_comp_sizes if x > 1]
+scaling_factors = get_scaling_factors(len(component_sizes), nyc_gdf)
+```
+
+The NYC predictors are on very different scales. To correct this, we log transform
+two of the four columns of the design matrix.
+
+```{python}
 design_vars = np.array(['pct_pubtransit','med_hh_inc', 'traffic', 'frag_index'])
 design_mat = nyc_gdf[design_vars].to_numpy()
 design_mat[:, 1] = np.log(design_mat[:, 1])
 design_mat[:, 2] = np.log(design_mat[:, 2])
-
-# spatial structure
-nyc_nbs_adj = nbs_to_adjlist(nyc_nbs)
-component_sizes = [x for x in nyc_comp_sizes if x > 1]
-scaling_factors = get_scaling_factors(len(component_sizes), nyc_gdf)
 ```
 
 We assemble all inputs into dictionary `bym2_multicomp_data`.
@@ -1452,24 +1017,16 @@ bym2_multicomp_data = {
 #### Model Fitting
 
 ```{python}
+#| output: false
 bym2_multicomp_ozs_file = os.path.join('stan', 'bym2_multicomp.stan')
 bym2_multicomp_ozs_mod = CmdStanModel(stan_file=bym2_multicomp_ozs_file)
-```
 
-```{python}
-bym2_multicomp_ozs_fit = bym2_multicomp_ozs_mod.sample(data=bym2_multicomp_data, iter_warmup=3000)
+bym2_multicomp_ozs_fit = bym2_multicomp_ozs_mod.sample(data=bym2_multicomp_data, iter_warmup=8000, iter_sampling=2000)
 ```
-
 ```{python}
 bym2_multicomp_ozs_summary = bym2_multicomp_ozs_fit.summary()
-ozs_fit_time = bym2_multicomp_ozs_fit.time
-ozs_total_time = 0
-for i in range(len(ozs_fit_time)):
-    ozs_total_time += ozs_fit_time[i]['total']
-bym2_multicomp_ozs_summary['ESS/sec'] = bym2_multicomp_ozs_summary['ESS_bulk']/ozs_total_time
-
-bym2_multicomp_ozs_summary[['Mean', 'StdDev', 'ESS_bulk', 'ESS/sec', 'R_hat']].round(2).loc[
-  ['beta_intercept', 'beta0', 'betas[1]', 'betas[2]', 'betas[3]', 'betas[4]', 'sigma', 'rho']]
+bym2_multicomp_ozs_summary[['Mean', 'StdDev', 'ESS_bulk/s', 'R_hat']].round(2).loc[
+  ['beta_intercept', 'betas[1]', 'betas[2]', 'betas[3]', 'betas[4]', 'sigma', 'rho']]
 ```
 
 #### Model Comparison
@@ -1498,48 +1055,30 @@ components, applying the sum-to-zero constraint to each in turn.
 
 The data inputs are the same.
 To ensure (roughly) the same initialization, we reuse the seed from `bym2_multicomp_ozs_fit`.
-
-```{python}
-a_seed = bym2_multicomp_ozs_fit.metadata.cmdstan_config['seed']
-```
-
-```{python}
-bym2_multicomp_soft_file = os.path.join('stan', 'bym2_multicomp_soft.stan')
-bym2_multicomp_soft_mod = CmdStanModel(stan_file=bym2_multicomp_soft_file)
-```
-
 This model fits *very* slowly and requires increasing the `max_treedepth`; at the default setting,
 all iterations hit this limit.
 
 ```{python}
-bym2_multicomp_soft_fit = bym2_multicomp_soft_mod.sample(data=bym2_multicomp_data, iter_warmup=3000, max_treedepth=14, seed=a_seed)
+#| output: false
+a_seed = bym2_multicomp_ozs_fit.metadata.cmdstan_config['seed']
+bym2_multicomp_soft_file = os.path.join('stan', 'bym2_multicomp_soft.stan')
+bym2_multicomp_soft_mod = CmdStanModel(stan_file=bym2_multicomp_soft_file)
+bym2_multicomp_soft_fit = bym2_multicomp_soft_mod.sample(data=bym2_multicomp_data, max_treedepth=13, iter_warmup=8000, iter_sampling=2000, seed=a_seed)
 ```
 
-```{python}
-bym2_multicomp_soft_summary = bym2_multicomp_soft_fit.summary()
-```
-
-We compare the result of both implementations.
+The following table compares the results for the hierarchical parameters `beta`, `rho`, and `sigma`.
 
 ```{python}
 bym2_multicomp_ozs_summary.index =  bym2_multicomp_ozs_summary.index.astype(str) + "  a) ozs"
-
+bym2_multicomp_soft_summary = bym2_multicomp_soft_fit.summary()
 bym2_multicomp_soft_summary.index =  bym2_multicomp_soft_summary.index.astype(str) + "  b) soft"
-soft_fit_time = bym2_multicomp_soft_fit.time
-soft_total_time = 0
-for i in range(len(soft_fit_time)):
-    soft_total_time += soft_fit_time[i]['total']
-bym2_multicomp_soft_summary['ESS/sec'] = bym2_multicomp_soft_summary['ESS_bulk']/soft_total_time
-
 bym2_multicomp_summary = pd.concat([bym2_multicomp_ozs_summary, bym2_multicomp_soft_summary])
 
 beta_summary = summarize_predictor(bym2_multicomp_summary, 'beta')
 sigma_summary = summarize_predictor(bym2_multicomp_summary, 'sigma')
 rho_summary = summarize_predictor(bym2_multicomp_summary, 'rho')
 nyc_summary = pd.concat([beta_summary, sigma_summary, rho_summary])
-```
 
-```{python}
 display(HTML(style_dataframe(nyc_summary, 2).to_html()))
 ```
 
@@ -1562,8 +1101,16 @@ The dramatic difference in run times speaks for itself.
 The more complex the model, the greater the need for the `sum_to_zero_vector`.
 When considering the effective sample size, it is important to remember that
 what is most important is effective samples **per second**.
-In these experiments, the `sum_to_zero_vector` models consistently have the best wall-clock time
-and the highest ESS/sec.
+In these experiments, the `sum_to_zero_vector` models consistently have the highest ESS/sec.
+
+Key takeaways:
+
+* In the first part of this case study, we show how to use the `sum_to_zero_vector` for categorical predictors in a hierarchical model,
+and how to adjust the marginal variances for a normal prior.
+
+* In the second part of this case study we see how to implement the constraining transform
+used for the `sum_to_zero_vector` as a Stan function in order to handle the case where a
+vector is the concatenation of several sum-to-zero vectors.
 
 
 ## References
@@ -1579,4 +1126,6 @@ and the highest ESS/sec.
 * Morris et al., 2019: [Bayesian Hierarchical Spatial Models: Implementing the Besag York Mollié Model in Stan](https://www.sciencedirect.com/science/article/abs/pii/S1877584518301175)
 
 * Stan Development Team: [Stan Documentation Suite](https://mc-stan.org/docs/)
+
+* Vehtari et al, 2021 [Rank-Normalization, Folding, and Localization: An Improved $\widehat{R}$ for Assessing Convergence of MCMC (with Discussion)](https://projecteuclid.org/journals/bayesian-analysis/volume-16/issue-2/Rank-Normalization-Folding-and-Localization--An-Improved-R%cb%86-for/10.1214/20-BA1221.full)
 
