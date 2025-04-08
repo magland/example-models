@@ -83,10 +83,6 @@ produces a vector of size `K` such that `sum(beta) = 0`.
 The unconstrained representation requires only `K - 1` values because the
 last is determined by the first `K - 1`.
 
-Further discussion is in
-[this Discourse post by Sean Pinkney](https://discourse.mc-stan.org/t/zero-sum-vector-and-normal-distribution/38296), developer of `sum_to_zero_vector`.
-
->A sum to zero vector is exactly what the name suggests. A vector where the sum of the elements equals 0.
 If you put a normal prior on the zero-sum vector the resulting variance will be less than the intended normal variance.
 To get the same variance as the intended normal prior do
 
@@ -98,19 +94,17 @@ nnmodel {
   z ~ normal(0, sqrt((N / (N - 1.0)) * sigma)
 }
 ```
->where sigma is the intended standard deviation. FYI, it’s a bit more efficient to pre-calculate the `sqrt(N * (N - 1.0))` in transformed_data.
-The general result to get a given variance from a normal with linear constraints is in: Fraser, D. A. S. (1951).
-Normal Samples With Linear Constraints and Given Variances. Canadian Journal of Mathematics, 3, 363–366. [doi:10.4153/CJM-1951-041-9](https://doi.org/10.4153/CJM-1951-041-9).
+where sigma is the intended standard deviation.
+(Note: it’s slightly more efficient to pre-calculate the `sqrt(N / (N - 1.0))` in transformed_data.)
 
-Prior to Stan 2.36, a sum-to-zero constraint could be implemented in one of two ways:
+Prior to Stan 2.36, a sum-to-zero constraint could be implemented either
 
-- As a "hard" sum to zero constraint, where the parameter is declared to be an $N-1$ length vector with a corresponding $N$-length transformed parameter
+- as a "hard" sum to zero constraint, where the parameter is declared to be an $N-1$ length vector with a corresponding $N$-length transformed parameter
 whose first $N-1$ elements are the same as the corresponding parameter vector, and the $N^{th}$ element is the negative sum of the $N-1$ elements.
 
+- as a "soft" sum to zero constraint, where the parameter is an $N$-length vector with a prior on the sum of the elements that keeps it within $\epsilon$ of $0$.
 
-- As a "soft" sum to zero constraint with an $N$-length parameter vector whose sum is constrained to be within $\epsilon$ of $0$.
-
-Up until now, users had to choose between the hard or soft sum-to-zero constraint, without clear guidance.
+The choice between the two was largely an empirical one.
 As a general rule, for small vectors, the hard sum-to-zero constraint is more efficient;
 for larger vectors, the soft sum-to-zero constraint is faster,
 but much depends on the specifics of the model and the data.
@@ -261,9 +255,12 @@ the model is a priori well-specified with respect to the data.
 
 ::: {.callout-note}
 Because the data-generating parameters and percentage of observations per category are generated at random,
-some datasets may have many low count or no count strata, or random effects near zero across several categories
-and will therefore be pathologically hard to fit.
-Using a specified seed for the data-generating program avoids this problem.
+some datasets may have very low overall disease rates and/or many unobserved strata.
+While this is informative for understanding what is consistent with the generating distributions,
+it results in estimates of varying effect parameters with near-zero values,
+which are on the boundary of parameter space, and hence very challenging to fit.
+Because we wish to compare baseline performance,
+we have cherry-picked a seed which generates datasets that avoid this issue.
 :::
 
 
@@ -413,18 +410,14 @@ large_data_fits_summary = pd.concat([ozs_fit_lg_summary, hard_fit_lg_summary, so
 
 **Eth**
 
-*Data-generating coefficients for each `beta_eth` category and the relative percentage of observations*
-```{python}
-print("params", data_small['beta_eth'], "\npcts", data_small['pct_eth'])
-```
-
 *Fitted estimates*
 ```{python}
 beta_eth_summary = summarize_predictor(small_data_fits_summary, 'beta_eth\[')
 beta_eth_summary_lg = summarize_predictor(large_data_fits_summary, 'beta_eth\[')
+labels = expand_true(data_small['beta_eth'], "Datagen<br>values")
 small_html = style_dataframe(beta_eth_summary, 3).to_html()
 large_html = style_dataframe(beta_eth_summary_lg, 3).to_html()
-display_side_by_side(small_html, large_html)
+display_side_by_side(small_html, large_html, labels)
 
 sigma_eth_summary = summarize_predictor(small_data_fits_summary, 'sigma_eth')
 sigma_eth_summary_lg = summarize_predictor(large_data_fits_summary, 'sigma_eth')
@@ -436,18 +429,14 @@ display_side_by_side(small_html, large_html)
 
 **Edu** 
 
-*Data-generating coefficients for each `beta_edu` category and the relative percentage of observations*
-```{python}
-print("params", data_small['beta_edu'], "\npcts", data_small['pct_edu'])
-```
-
 *Fitted estimates*
 ```{python}
 beta_edu_summary = summarize_predictor(small_data_fits_summary, 'beta_edu\[')
 beta_edu_summary_lg = summarize_predictor(large_data_fits_summary, 'beta_edu\[')
+labels = expand_true(data_small['beta_edu'], "Datagen<br>values")
 small_html = style_dataframe(beta_edu_summary, 3).to_html()
 large_html = style_dataframe(beta_edu_summary_lg, 3).to_html()
-display_side_by_side(small_html, large_html)
+display_side_by_side(small_html, large_html, labels)
 
 sigma_edu_summary = summarize_predictor(small_data_fits_summary, 'sigma_edu')
 sigma_edu_summary_lg = summarize_predictor(large_data_fits_summary, 'sigma_edu')
@@ -458,19 +447,14 @@ display_side_by_side(small_html, large_html)
 
 **Age**
 
-*Data-generating coefficients for each `beta_edu` category and the relative percentage of observations*
-```{python}
-print("params", data_small['beta_age'], "\npcts", data_small['pct_age'])
-```
-
-
 *Fitted estimates*
 ```{python}
 beta_age_summary = summarize_predictor(small_data_fits_summary, 'beta_age\[')
 beta_age_summary_lg = summarize_predictor(large_data_fits_summary, 'beta_age\[')
+labels = expand_true(data_small['beta_age'], "Datagen<br>values")
 small_html = style_dataframe(beta_age_summary, 3).to_html()
 large_html = style_dataframe(beta_age_summary_lg, 3).to_html()
-display_side_by_side(small_html, large_html)
+display_side_by_side(small_html, large_html, labels)
 
 sigma_age_summary = summarize_predictor(small_data_fits_summary, 'sigma_age')
 sigma_age_summary_lg = summarize_predictor(large_data_fits_summary, 'sigma_age')
@@ -616,6 +600,7 @@ shows how to properly scale the variance of a `sum_to_zero_vector` constrained p
 
 * Prior predictive checks demonstrate the difference between the marginal variances of
 the `sum_to_zero_vector` and hard sum-to-zero implementations.
+
 
 
 ## Spatial Models with an ICAR component
@@ -1080,10 +1065,11 @@ bym2_multicomp_soft_summary = bym2_multicomp_soft_fit.summary()
 bym2_multicomp_soft_summary.index =  bym2_multicomp_soft_summary.index.astype(str) + "  b) soft"
 bym2_multicomp_summary = pd.concat([bym2_multicomp_ozs_summary, bym2_multicomp_soft_summary])
 
-beta_summary = summarize_predictor(bym2_multicomp_summary, 'beta')
+beta_intercept_summary = summarize_predictor(bym2_multicomp_summary, 'beta_intercept')
+betas_summary = summarize_predictor(bym2_multicomp_summary, 'betas')
 sigma_summary = summarize_predictor(bym2_multicomp_summary, 'sigma')
 rho_summary = summarize_predictor(bym2_multicomp_summary, 'rho')
-nyc_summary = pd.concat([beta_summary, sigma_summary, rho_summary])
+nyc_summary = pd.concat([beta_intercept_summary, beta_summary, sigma_summary, rho_summary])
 
 display(HTML(style_dataframe(nyc_summary, 2).to_html()))
 ```
@@ -1124,17 +1110,20 @@ vector is the concatenation of several sum-to-zero vectors.
 
 ## References
 
-* Seybolt, 2024: [Add ZeroSumNormal distribution](https://github.com/pyro-ppl/numpyro/pull/1751#issuecomment-1980569811)
-
-* Gelman and Carpenter, 2020: [Bayesian Analysis of Tests with Unknown Specificity and Sensitivity](https://doi.org/10.1111/rssc.12435)
-
-* Riebler et al., 2016: [An intuitive Bayesian spatial model for disease mapping that accounts for scaling](https://arxiv.org/abs/1601.01180)
+* Fraser, 1951: Normal Samples With Linear Constraints and Given Variances. Canadian Journal of Mathematics, 3, 363–366. [doi:10.4153/CJM-1951-041-9](https://doi.org/10.4153/CJM-1951-041-9).
 
 * Freni-Sterrantino et al.,2018: [A note on intrinsic conditional autoregressive models for disconnected graphs](https://arxiv.org/pdf/1705.04854.pdf)
 
+* Gelman and Carpenter, 2020: [Bayesian Analysis of Tests with Unknown Specificity and Sensitivity](https://doi.org/10.1111/rssc.12435)
+
 * Morris et al., 2019: [Bayesian Hierarchical Spatial Models: Implementing the Besag York Mollié Model in Stan](https://www.sciencedirect.com/science/article/abs/pii/S1877584518301175)
+
+* Pinkney, 2025: [Zero-sum-vector and normal distribution](https://discourse.mc-stan.org/t/zero-sum-vector-and-normal-distribution/38296).
+
+* Riebler et al., 2016: [An intuitive Bayesian spatial model for disease mapping that accounts for scaling](https://arxiv.org/abs/1601.01180)
+
+* Seybolt, 2024: [Add ZeroSumNormal distribution](https://github.com/pyro-ppl/numpyro/pull/1751#issuecomment-1980569811)
 
 * Stan Development Team: [Stan Documentation Suite](https://mc-stan.org/docs/)
 
 * Vehtari et al, 2021 [Rank-Normalization, Folding, and Localization: An Improved $\widehat{R}$ for Assessing Convergence of MCMC (with Discussion)](https://projecteuclid.org/journals/bayesian-analysis/volume-16/issue-2/Rank-Normalization-Folding-and-Localization--An-Improved-R%cb%86-for/10.1214/20-BA1221.full)
-

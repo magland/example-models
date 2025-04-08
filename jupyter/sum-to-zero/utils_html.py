@@ -4,6 +4,8 @@ import pandas as pd
 from IPython.display import HTML
 import numpy as np
 import pandas as pd
+from typing import List
+
 
 def extract_numeric_index(idx: pd.Index) -> pd.Series:
     return idx.str.extract(r'[a-z_]*\[(\d+)\]', expand=False).astype(int)
@@ -35,6 +37,7 @@ from IPython.core.display import display, HTML
 def display_side_by_side(
     html_left: str,
     html_right: str,
+    labels: str = "",
     title_left: str = "Small Dataset",
     title_right: str = "Large Dataset"
 ) -> None:
@@ -43,11 +46,15 @@ def display_side_by_side(
     """
     html_code = f"""
     <div style="display: flex; justify-content: space-between; gap: 10px;">
-        <div style="width: 48%; border: 1px solid #ddd; padding: 5px;">
+        <div style="width: 10%; border: 1px solid #ddd; padding: 3px;">
+            <b><i>&nbsp;</i></b>
+            {labels}
+        </div>
+        <div style="width: 45%; border: 1px solid #ddd; padding: 5px;">
             <b><i>{title_left}</i></b>
             {html_left}
         </div>
-        <div style="width: 48%; border: 1px solid #ddd; padding: 5px;">
+        <div style="width: 45%; border: 1px solid #ddd; padding: 5px;">
             <b><i>{title_right}</i></b>
             {html_right}
         </div>
@@ -55,3 +62,16 @@ def display_side_by_side(
     """
     display(HTML(html_code))
 
+def expand_true(datagen_values: List[float], header: str) -> str:
+    # Create HTML for datagen values column
+    datagen_values_html = f"<table border='1' class='dataframe'><thead><tr><th>{header}</th></tr></thead><tbody>"
+    
+    # Add each datagen value three times (one for each model)
+    for val in datagen_values:
+        # Show value for first row of each group
+        datagen_values_html += f"<tr><td>{val:.2f}</td></tr>"
+        # Empty cells for the other two rows
+        datagen_values_html += "<tr><td>&nbsp;</td></tr>"
+        datagen_values_html += "<tr><td>&nbsp;</td></tr>"
+    datagen_values_html += "</tbody></table>"
+    return datagen_values_html
