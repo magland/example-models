@@ -21,6 +21,7 @@ format:
     toc-location: right
     embed-resources: true
 execute:
+  eval: false
   engine: jupyter
 include-in-header:
   - text: |
@@ -109,7 +110,7 @@ As a general rule, for small vectors, the hard sum-to-zero constraint is more ef
 for larger vectors, the soft sum-to-zero constraint is faster,
 but much depends on the specifics of the model and the data.
 
-
+The hard sum-to-zero is often problematic.
 For small $N$ and models with sensible priors, the hard sum-to-zero is usually satisfactory.
 But as the size of the vector grows, it distorts the marginal variance of the $N^{th}$.
 Given a parameter vector:
@@ -237,7 +238,7 @@ we have written a data-generating program to create datasets given the
 baseline disease prevalence, test specificity and sensitivity,
 and the desired number of diagnostic tests.
 In the `generated quantities` block we use Stan's PRNG functions to populate
-the true weights for the categorical coefficient vectors, and the relative percentages
+ vthe true weights for the categorical coefficient vectors, and the relative percentages
 of per-category observations.
 Then we use a set of nested loops to generate the data for each demographic,
 using the PRNG equivalent of the model likelihood.
