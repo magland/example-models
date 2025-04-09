@@ -21,7 +21,6 @@ format:
     toc-location: right
     embed-resources: true
 execute:
-  eval: false
   engine: jupyter
 include-in-header:
   - text: |
@@ -824,11 +823,12 @@ brklyn_qns_soft_summary = brklyn_qns_soft_fit.summary()
 brklyn_qns_soft_summary.index = brklyn_qns_soft_summary.index.astype(str) + " - soft"
 
 brklyn_qns_fits_summary = pd.concat([brklyn_qns_ozs_summary, brklyn_qns_hard_summary, brklyn_qns_soft_summary])
-beta_summary = summarize_predictor(brklyn_qns_fits_summary, 'beta')
+intercept_summary = summarize_predictor(brklyn_qns_fits_summary, 'beta_intercept')
+betas_summary = summarize_predictor(brklyn_qns_fits_summary, 'betas')
 sigma_summary = summarize_predictor(brklyn_qns_fits_summary, 'sigma')
 rho_summary = summarize_predictor(brklyn_qns_fits_summary, 'rho')
 
-brklyn_qns_summary = pd.concat([beta_summary, sigma_summary, rho_summary])
+brklyn_qns_summary = pd.concat([intercept_summary, betas_summary, sigma_summary, rho_summary])
 display(HTML(style_dataframe(brklyn_qns_summary, 3).to_html()))
 ```
 
@@ -1010,7 +1010,7 @@ to obtain satisfactory R-hat values.
 #| output: false
 bym2_multicomp_ozs_file = os.path.join('stan', 'bym2_multicomp.stan')
 bym2_multicomp_ozs_mod = CmdStanModel(stan_file=bym2_multicomp_ozs_file)
-bym2_multicomp_ozs_fit = bym2_multicomp_ozs_mod.sample(data=bym2_multicomp_data, iter_warmup=8000, iter_sampling=2000)
+bym2_multicomp_ozs_fit = bym2_multicomp_ozs_mod.sample(data=bym2_multicomp_data, iter_warmup=9000)
 ```
 *Tabulate summary statistics.*
 ```{python}
@@ -1054,7 +1054,7 @@ all iterations hit this limit.
 a_seed = bym2_multicomp_ozs_fit.metadata.cmdstan_config['seed']
 bym2_multicomp_soft_file = os.path.join('stan', 'bym2_multicomp_soft.stan')
 bym2_multicomp_soft_mod = CmdStanModel(stan_file=bym2_multicomp_soft_file)
-bym2_multicomp_soft_fit = bym2_multicomp_soft_mod.sample(data=bym2_multicomp_data, max_treedepth=13, iter_warmup=8000, iter_sampling=2000, seed=a_seed)
+bym2_multicomp_soft_fit = bym2_multicomp_soft_mod.sample(data=bym2_multicomp_data, max_treedepth=13, iter_warmup=9000, seed=a_seed)
 ```
 
 The following table compares the results for the hierarchical parameters `beta`, `rho`, and `sigma`.
@@ -1066,11 +1066,11 @@ bym2_multicomp_soft_summary = bym2_multicomp_soft_fit.summary()
 bym2_multicomp_soft_summary.index =  bym2_multicomp_soft_summary.index.astype(str) + "  b) soft"
 bym2_multicomp_summary = pd.concat([bym2_multicomp_ozs_summary, bym2_multicomp_soft_summary])
 
-beta_intercept_summary = summarize_predictor(bym2_multicomp_summary, 'beta_intercept')
+intercept_summary = summarize_predictor(bym2_multicomp_summary, 'beta_intercept')
 betas_summary = summarize_predictor(bym2_multicomp_summary, 'betas')
 sigma_summary = summarize_predictor(bym2_multicomp_summary, 'sigma')
 rho_summary = summarize_predictor(bym2_multicomp_summary, 'rho')
-nyc_summary = pd.concat([beta_intercept_summary, beta_summary, sigma_summary, rho_summary])
+nyc_summary = pd.concat([intercept_summary, betas_summary, sigma_summary, rho_summary])
 
 display(HTML(style_dataframe(nyc_summary, 2).to_html()))
 ```
