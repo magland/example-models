@@ -1,7 +1,11 @@
-Notebooks to demonstrate correctness and efficiency of constrained parameter type `sum_to_zero_vector`,
-introduced in Stan 2.36.
+Case study and jupyter notebook which demonstrate the correctness and efficiency of the
+`sum_to_zero_vector` constrained parameter type, introduced in Stan 2.36.
 
-HTML page has all necessary resources.  To rebuild,  add `stan-dev/quarto-config` submodule.
+
+- Case study `sum_to_zero_evaluation.qmd` demonstrates use of the `sum_to_zero_vector` for 2 models.
+
+- Jupyter notebook `sum_to_zero_evalutation.ipynb` is a step-by-step explanation of the operations
+used to carry out this evaluation. 
 
 Included in the GitHub repository for this notebook are several python files of helper functions.
 
@@ -12,6 +16,3 @@ Included in the GitHub repository for this notebook are several python files of 
 * utils\_nyc\_map.py - munge the New York City census tract map.
 
 Author:  Mitzi Morris
-
-
-
