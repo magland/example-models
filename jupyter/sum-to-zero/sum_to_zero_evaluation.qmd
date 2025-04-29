@@ -784,7 +784,7 @@ brklyn_qns_data = {"N":brklyn_qns_gdf.shape[0],
 
 #### Model fitting
 
-The BYM2 model requires many warmup iterations in order to MCMC to converge for all parameters,
+The BYM2 model requires many warmup iterations in order for MCMC to converge for all parameters,
 including hyperparameters `rho` and `sigma`.
 We run all three models using the same seed, in order to make the initial parameters as similar
 as possible.
