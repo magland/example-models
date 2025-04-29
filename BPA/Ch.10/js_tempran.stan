@@ -223,6 +223,7 @@ generated quantities {
   array[M, n_occasions] int z; // Latent state
   
   // Generate z[]
+  // This code generates the posterior predictive distribution
   for (i in 1 : M) {
     int q = 1;
     real mu2;
