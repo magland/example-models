@@ -12,7 +12,7 @@ functions {
     }
     return n * foo(n - 1);
   }
-  
+
   array[] real sho(real t, array[] real y, array[] real theta,
                    data array[] real x, data array[] int x_int) {
     array[2] real dydt;
@@ -20,40 +20,40 @@ functions {
     dydt[2] = -y[1] - theta[1] * y[2];
     return dydt;
   }
-  
+
   real foo_bar0() {
     return 0.0;
   }
-  
+
   real foo_bar1(real x) {
     return 1.0;
   }
-  
+
   real foo_bar2(real x, real y) {
     return 2.0;
   }
-  
+
   real foo_lpmf(int y, real lambda) {
     return 1.0;
   }
-  
+
   real foo_lcdf(int y, real lambda) {
     return 1.0;
   }
-  
+
   real foo_lccdf(int y, real lambda) {
     return 1.0;
   }
-  
+
   real foo_rng(real mu, real sigma) {
     return normal_rng(mu, sigma);
   }
-  
+
   void unit_normal_lp(real u) {
     target += normal_lpdf(u | 0, 1);
     u ~ uniform(-100, 100);
   }
-  
+
   int foo_1(int a) {
     // direct while
     while (1) {
@@ -62,7 +62,7 @@ functions {
     while (0) {
       continue;
     }
-    
+
     // direct for
     for (i in 1 : 10) {
       break;
@@ -70,14 +70,14 @@ functions {
     for (i in 1 : 10) {
       continue;
     }
-    
+
     // in statement seq
     while (1) {
       int b;
       b = 5;
       break;
     }
-    
+
     // if, else if, else body
     while (1) {
       if (0) {
@@ -88,21 +88,21 @@ functions {
         break;
       }
     }
-    
+
     // nested while
     while (1) {
       while (0) {
         break;
       }
     }
-    
+
     // nested for
     while (1) {
       for (i in 1 : 10) {
         break;
       }
     }
-    
+
     // nested foreach (array)
     while (1) {
       array[2, 3] int vs;
@@ -123,7 +123,7 @@ functions {
         z = 1;
       }
     }
-    
+
     // nested foreach (matrix)
     while (1) {
       real z;
@@ -137,7 +137,7 @@ functions {
         continue;
       }
     }
-    
+
     // nested foreach (vector)
     while (1) {
       real z;
@@ -151,7 +151,7 @@ functions {
         continue;
       }
     }
-    
+
     // nested foreach (rowvector)
     while (1) {
       real z;
@@ -165,7 +165,7 @@ functions {
         continue;
       }
     }
-    
+
     // nested block
     while (1) {
       int b;
@@ -176,30 +176,30 @@ functions {
         break;
       }
     }
-    
+
     return 0;
   }
-  
+
   int foo_2(int a) {
     array[2] int vs;
     int y;
-    for (v in vs) 
+    for (v in vs)
       y = v;
     return 0;
   }
-  
+
   array[] real foo_3(real t, int n) {
     return rep_array(t, n);
   }
-  
+
   real foo_lp(real x) {
     return x + target();
   }
-  
+
   void foo_4(real x) {
     reject("user-specified rejection", x);
   }
-  
+
   real relative_diff(real x, real y, real max_, real min_) {
     real abs_diff;
     real avg_scale;
@@ -215,19 +215,19 @@ functions {
     }
     return abs_diff / avg_scale;
   }
-  
+
   vector foo_5(vector shared_params, vector job_params,
                data array[] real data_r, data array[] int data_i) {
     return [1, 2, 3]';
   }
-  
+
   real foo_five_args(real x1, real x2, real x3, real x4, real x5) {
     return x1;
   }
   real foo_five_args_lp(real x1, real x2, real x3, real x4, real x5, real x6) {
     return x1;
   }
-  
+
   matrix covsqrt2corsqrt(matrix mat, int invert) {
     matrix[rows(mat), cols(mat)] o;
     o = mat;
@@ -240,82 +240,82 @@ functions {
           matrix a10, array[] matrix a11, array[,] matrix a12) {
     print("hi");
   }
-  
+
   int f1(int a1, array[] int a2, array[,] int a3, real a4, array[] real a5,
          array[,] real a6, vector a7, array[] vector a8, array[,] vector a9,
          matrix a10, array[] matrix a11, array[,] matrix a12) {
     return a1;
   }
-  
+
   array[] int f2(int a1, array[] int a2, array[,] int a3, real a4,
                  array[] real a5, array[,] real a6, vector a7,
                  array[] vector a8, array[,] vector a9, matrix a10,
                  array[] matrix a11, array[,] matrix a12) {
     return a2;
   }
-  
+
   array[,] int f3(int a1, array[] int a2, array[,] int a3, real a4,
                   array[] real a5, array[,] real a6, vector a7,
                   array[] vector a8, array[,] vector a9, matrix a10,
                   array[] matrix a11, array[,] matrix a12) {
     return a3;
   }
-  
+
   real f4(int a1, array[] int a2, array[,] int a3, real a4, array[] real a5,
           array[,] real a6, vector a7, array[] vector a8, array[,] vector a9,
           matrix a10, array[] matrix a11, array[,] matrix a12) {
     return a4;
   }
-  
+
   array[] real f5(int a1, array[] int a2, array[,] int a3, real a4,
                   array[] real a5, array[,] real a6, vector a7,
                   array[] vector a8, array[,] vector a9, matrix a10,
                   array[] matrix a11, array[,] matrix a12) {
     return a5;
   }
-  
+
   array[,] real f6(int a1, array[] int a2, array[,] int a3, real a4,
                    array[] real a5, array[,] real a6, vector a7,
                    array[] vector a8, array[,] vector a9, matrix a10,
                    array[] matrix a11, array[,] matrix a12) {
     return a6;
   }
-  
+
   vector f7(int a1, array[] int a2, array[,] int a3, real a4,
             array[] real a5, array[,] real a6, vector a7, array[] vector a8,
             array[,] vector a9, matrix a10, array[] matrix a11,
             array[,] matrix a12) {
     return a7;
   }
-  
+
   array[] vector f8(int a1, array[] int a2, array[,] int a3, real a4,
                     array[] real a5, array[,] real a6, vector a7,
                     array[] vector a8, array[,] vector a9, matrix a10,
                     array[] matrix a11, array[,] matrix a12) {
     return a8;
   }
-  
+
   array[,] vector f9(int a1, array[] int a2, array[,] int a3, real a4,
                      array[] real a5, array[,] real a6, vector a7,
                      array[] vector a8, array[,] vector a9, matrix a10,
                      array[] matrix a11, array[,] matrix a12) {
     return a9;
   }
-  
+
   matrix f10(int a1, array[] int a2, array[,] int a3, real a4,
              array[] real a5, array[,] real a6, vector a7, array[] vector a8,
              array[,] vector a9, matrix a10, array[] matrix a11,
              array[,] matrix a12) {
     return a10;
   }
-  
+
   array[] matrix f11(int a1, array[] int a2, array[,] int a3, real a4,
                      array[] real a5, array[,] real a6, vector a7,
                      array[] vector a8, array[,] vector a9, matrix a10,
                      array[] matrix a11, array[,] matrix a12) {
     return a11;
   }
-  
+
   array[,] matrix f12(int a1, array[] int a2, array[,] int a3, real a4,
                       array[] real a5, array[,] real a6, vector a7,
                       array[] vector a8, array[,] vector a9, matrix a10,
@@ -351,7 +351,7 @@ functions {
     f_x[2] = x[2] - y[2];
     return f_x;
   }
-  
+
   vector binomialf(vector phi, vector theta, data array[] real x_r,
                    data array[] int x_i) {
     vector[1] lpmf;
@@ -444,10 +444,10 @@ transformed data {
   td_simplex = td_1d_simplex[1,  : ];
   td_simplex = td_1d_simplex[1,  : ];
   td_simplex = td_1d_simplex[1, 1 : N];
-  
+
   array[2, 2] int arr_mul_ind;
   arr_mul_ind[1, 1 : 2] = {1, 1};
-  
+
   array[2] real x_mul_ind = {1, 2};
 }
 parameters {
@@ -488,20 +488,20 @@ transformed parameters {
   cholesky_factor_cov[3] tp_cfcov_33;
   array[K] cholesky_factor_cov[3] tp_cfcov_33_ar;
   vector[2] theta_p;
-  
+
   tp_real_1d_ar = p_real_1d_ar;
   tp_real_3d_ar = p_real_3d_ar;
   tp_1d_vec = p_1d_vec;
   tp_3d_vec = p_3d_vec;
-  
+
   tp_simplex = p_simplex;
   tp_1d_simplex = p_1d_simplex;
   tp_3d_simplex = p_3d_simplex;
-  
+
   tp_cfcov_54 = p_cfcov_54;
   tp_cfcov_33 = p_cfcov_33;
   tp_cfcov_33_ar = p_cfcov_33_ar;
-  
+
   for (i in 1 : 2) {
     for (j in 1 : 3) {
       for (m in 1 : 4) {
@@ -511,14 +511,14 @@ transformed parameters {
       }
     }
   }
-  
+
   for (i in 1 : N) {
     tp_vec[i] = -1.0 * p_vec[i];
   }
   tp_row_vec = tp_1d_vec[1]';
   tp_1d_row_vec = p_1d_row_vec;
   tp_3d_row_vec = p_3d_row_vec;
-  
+
   theta_p = algebra_solver(algebra_system, x, y, dat, dat_int);
   theta_p = algebra_solver(algebra_system, x, y, dat, dat_int, 0.01, 0.01,
                            10);
@@ -539,7 +539,8 @@ model {
   unit_normal_lp(p_real);
   p_real ~ normal(0, 1);
   offset_multiplier ~ normal(0, 1);
-  
+  x_p ~ normal(0,1);
+  y_p ~ normal(0,1);
   to_vector(p_real_1d_ar) ~ normal(0, 1);
   for (n in 1 : N) {
     to_vector(p_1d_vec[n]) ~ normal(0, 1);
@@ -569,7 +570,7 @@ model {
   to_vector(p_simplex) ~ normal(0, 1);
   to_vector(p_cfcov_54) ~ normal(0, 1);
   to_vector(p_cfcov_33) ~ normal(0, 1);
-  
+
   target += map_rect(binomialf, tmp, tmp2, x_r, x_i);
 }
 generated quantities {
@@ -600,7 +601,7 @@ generated quantities {
   array[3] matrix[3, 3] idx_res31;
   array[3] row_vector[4] idx_res4;
   array[2] vector[2] idx_res5;
-  
+
   gq_real_1d_ar = p_1d_simplex[ : , 1];
   gq_real_3d_ar = p_real_3d_ar;
   gq_1d_vec = p_1d_vec;
@@ -608,15 +609,15 @@ generated quantities {
   gq_row_vec = p_row_vec;
   gq_1d_row_vec = p_1d_row_vec;
   gq_3d_row_vec = p_3d_row_vec;
-  
+
   gq_simplex = p_1d_simplex[1, 1 : N];
   gq_1d_simplex = p_1d_simplex;
   gq_3d_simplex = p_3d_simplex;
-  
+
   gq_cfcov_54 = p_cfcov_54;
   gq_cfcov_33 = p_cfcov_33;
   gq_cfcov_33_ar = p_cfcov_33_ar;
-  
+
   for (i in 1 : 2) {
     for (j in 1 : 3) {
       for (m in 1 : 4) {
@@ -626,11 +627,11 @@ generated quantities {
       }
     }
   }
-  
+
   for (i in 1 : N) {
     gq_vec[i] = -1.0 * p_vec[i];
   }
-  
+
   // A fun thing about Stan is that we can test syntactic sugar in Stan itself:
   for (i in 1 : 3) {
     for (j in 1 : 4) {
@@ -639,19 +640,19 @@ generated quantities {
       }
     }
   }
-  
+
   // 2nd, 3rd, 1st indexing_matrix, 2nd, 3rd, 1st rows of each
   for (i in 1 : size(indices)) {
     for (j in 1 : size(indices)) {
       idx_res1[i, j] = indexing_mat[indices[i], indices[j]];
     }
   }
-  
+
   idx_res11 = indexing_mat[indices, indices];
   if (indexing_mat[indices, indices][2, 1, 1] != idx_res1[2, 1, 1]) {
     reject("indexing test 1 failed");
   }
-  
+
   //2nd, 3rd, 1st rows of every indexing_matrix
   for (i in 1 : 5) {
     for (j in 1 : size(indices)) {
@@ -663,7 +664,7 @@ generated quantities {
   if (indexing_mat[ : , indices][2, 1, 1] != idx_res2[2, 1, 1]) {
     reject("indexing test 2 failed");
   }
-  
+
   // (2nd, 3rd, 1st) indexing_matrices, all rows, 2nd, 3rd, 1st columns
   for (i in 1 : size(indices)) {
     for (j in 1 : 3) {
@@ -676,7 +677,7 @@ generated quantities {
   if (indexing_mat[indices,  : , indices][2, 1, 1] != idx_res3[2, 1, 1]) {
     reject("indexing test 3 failed");
   }
-  
+
   idx_res4 = indexing_mat[ : 3, 1,  : ];
   idx_res5 = indexing_mat[4 : , 2 : 3, 1];
 }
