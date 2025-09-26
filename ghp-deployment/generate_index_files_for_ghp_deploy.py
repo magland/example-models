@@ -3,24 +3,50 @@
 Script to automatically generate index.md files for all directories.
 
 This script recursively searches through the project and creates index.md files
-for all directories. For directories containing .stan and .data.json file pairs,
+for all directories. For directories containing .stan files (with optional .data.json files),
 it creates files with stan-playground embed code for viewing the models in Stan
-Playground. For other directories, it creates simple index files with links to
-all subdirectories and files. Always overwrites existing index.md files.
+Playground. Stan models without .data.json files are embedded with empty data.
+For other directories, it creates simple index files with links to all subdirectories
+and files. Always overwrites existing index.md files.
 """
 
 from pathlib import Path
 
 
-def find_stan_data_pairs(directory):
+def verify_readme():
     """
-    Find all .stan files and their corresponding .data.json files (if they exist) in a directory.
+    Verify that README.md exists in the root directory and contains the exact text "## Example Models".
+    
+    Returns:
+        bool: True if verification passes, False otherwise
+    """
+    readme_path = Path("README.md")
+    if not readme_path.exists():
+        print("Error: README.md not found in the root directory.")
+        return False
+    
+    try:
+        with open(readme_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+            if not content.startswith("## Example Models"):
+                print("Error: README.md does not start with '## Example Models'.")
+                print("This script should only be run in the example-models repository.")
+                return False
+            return True
+    except Exception as e:
+        print(f"Error reading README.md: {e}")
+        return False
+
+def find_stan_files_and_data(directory):
+    """
+    Find all .stan files and their optional .data.json files in a directory.
+    All .stan files will be included in the result, with or without corresponding data files.
     
     Args:
         directory (Path): Directory to search in
         
     Returns:
-        list: List of tuples (stan_file, data_file) where data_file can be None if no corresponding .data.json exists
+        list: List of tuples (stan_file, data_file) where data_file is None if no corresponding .data.json exists
     """
     pairs = []
     stan_files = list(directory.glob("*.stan"))
@@ -40,18 +66,18 @@ def find_stan_data_pairs(directory):
     return pairs
 
 
-def has_stan_data_pairs_recursive(directory):
+def has_stan_files_recursive(directory):
     """
-    Recursively check if a directory or any of its subdirectories contains .stan/.data.json pairs.
+    Recursively check if a directory or any of its subdirectories contains .stan files.
     
     Args:
         directory (Path): Directory to search in
         
     Returns:
-        bool: True if any .stan/.data.json pairs are found in the directory tree, False otherwise
+        bool: True if any .stan files are found in the directory tree, False otherwise
     """
-    # Check if the current directory has pairs
-    if find_stan_data_pairs(directory):
+    # Check if the current directory has stan files
+    if find_stan_files_and_data(directory):
         return True
     
     # Recursively check all subdirectories
@@ -59,7 +85,7 @@ def has_stan_data_pairs_recursive(directory):
         if item.is_dir() and not item.name.startswith('.'):
             # Skip common build/cache directories
             if item.name not in ['node_modules', '__pycache__', '.git', '_site']:
-                if has_stan_data_pairs_recursive(item):
+                if has_stan_files_recursive(item):
                     return True
     
     return False
@@ -86,7 +112,7 @@ def generate_directory_content(directory):
             if item.name not in ['node_modules', '__pycache__', '.git', '_site']:
                 # Check if this subdirectory contains .stan/.data.json pairs recursively
                 subdir_path = directory / item.name
-                if has_stan_data_pairs_recursive(subdir_path):
+                if has_stan_files_recursive(subdir_path):
                     subdirs_with_stan.append(item.name)
                 else:
                     subdirs_other.append(item.name)
@@ -124,10 +150,11 @@ def generate_directory_content(directory):
 
 def generate_index_content(pairs, directory):
     """
-    Generate the content for an index.md file based on stan/data pairs.
+    Generate the content for an index.md file based on stan files and their optional data files.
+    Stan files without corresponding .data.json files will be embedded with empty data.
     
     Args:
-        pairs (list): List of tuples (stan_file, data_file) where data_file can be None
+        pairs (list): List of tuples (stan_file, data_file) where data_file is None for files without data
         directory (Path): Directory containing the files
         
     Returns:
@@ -179,7 +206,7 @@ def process_directory(directory, stats):
         directory (Path): Directory to process
         stats (dict): Statistics dictionary to update
     """
-    pairs = find_stan_data_pairs(directory)
+    pairs = find_stan_files_and_data(directory)
     index_path = directory / "index.md"
     
     # Determine if this index.md existed before
@@ -217,6 +244,11 @@ def main():
     """Main function to run the script."""
     print("Stan Index Generator")
     print("===================")
+    
+    # Verify we're in the correct repository
+    if not verify_readme():
+        return
+    
     print("Creating index.md files for all directories...")
     print()
     
