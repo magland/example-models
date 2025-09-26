@@ -54,10 +54,10 @@ jobs:
       # Build with Jekyll
       - name: Build with Jekyll
         # Outputs to the './_site' directory by default
-        run: bundle exec jekyll build --baseurl "magland/example-models"
+        run: bundle exec jekyll build --baseurl "example-models"
         env:
           JEKYLL_ENV: production
-          PAGES_REPO_NWO: ${{ github.repository }}
+          PAGES_REPO_NWO: magland/example-models
       
       # Upload artifact
       - name: Upload artifact
